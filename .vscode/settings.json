@@ -1,0 +1,20 @@
+{
+  "dart.analysisExcludedFolders": [
+    "build"
+  ],
+  "dart.showLintWarnings": true,
+  "dart.showTodos": false,
+  "dart.showDeprecated": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "dart.analysisErrorSeverity": {
+    "deprecated_member_use": "info",
+    "constant_identifier_names": "info",
+    "use_build_context_synchronously": "warning",
+    "unused_local_variable": "warning",
+    "sized_box_for_whitespace": "info",
+    "unnecessary_to_list_in_spreads": "info",
+    "unnecessary_brace_in_string_interps": "info"
+  }
+}
