@@ -9,7 +9,7 @@ class ApiConfig {
   static const String twitterBearerToken = 'YOUR_TWITTER_BEARER_TOKEN_HERE';
 
   // URL de base de l'API backend ENA
-  static const String baseUrl = 'https://your-backend-url.com';
+  static const String baseUrl = 'https://ena.gouv.cd';
 
   // Configuration du chatbot
   static const String chatbotName = 'ENA';
