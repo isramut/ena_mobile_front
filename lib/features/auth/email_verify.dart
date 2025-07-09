@@ -81,34 +81,62 @@ class _PasswordRecuperationScreenState
         });
 
         try {
-          final result = await AuthApiService.verifyOtp(
-            email: widget.email ?? "",
-            otp: code,
-          );
-
-          if (!mounted) return;
-
-          if (result['success'] == true) {
-            setState(() {
-              _success = true;
-              _error = false;
-              _loading = false;
-            });
+          if (widget.isFromForgotPassword) {
+            // Flux mot de passe oublié : validation locale uniquement
+            // On considère le code valide s'il fait 6 caractères numériques
+            if (code.length == _codeLength && RegExp(r'^\d{6}$').hasMatch(code)) {
+              setState(() {
+                _success = true;
+                _error = false;
+                _loading = false;
+              });
+            } else {
+              setState(() {
+                _error = true;
+                _loading = false;
+              });
+              
+              _resetOtpFields();
+              
+              if (mounted) {
+                await ErrorPopup.show(
+                  context,
+                  title: "Code OTP invalide",
+                  message: "Le code OTP doit contenir 6 chiffres.",
+                );
+              }
+            }
           } else {
-            setState(() {
-              _error = true;
-              _loading = false;
-            });
-            
-            // Reset des champs et affichage de l'erreur
-            _resetOtpFields();
-            
-            if (mounted) {
-              await ErrorPopup.show(
-                context,
-                title: "Code OTP incorrect",
-                message: result['error'] ?? "Code OTP incorrect.",
-              );
+            // Flux inscription : appel API pour vérification
+            final result = await AuthApiService.verifyOtp(
+              email: widget.email ?? "",
+              otp: code,
+            );
+
+            if (!mounted) return;
+
+            if (result['success'] == true) {
+              setState(() {
+                _success = true;
+                _error = false;
+                _loading = false;
+              });
+            } else {
+              setState(() {
+                _error = true;
+                _loading = false;
+              });
+              
+              // Reset des champs et affichage de l'erreur
+              _resetOtpFields();
+              
+              if (mounted) {
+                await ErrorPopup.show(
+                  context,
+                  title: "Code OTP incorrect",
+                  message: result['error'] ?? "Code OTP incorrect.",
+                );
+              }
             }
           }
         } catch (e) {
@@ -170,11 +198,20 @@ class _PasswordRecuperationScreenState
     setState(() => _resendingCode = true);
 
     try {
-      // Utiliser le même endpoint avec des actions différentes
-      final result = await AuthApiService.resendOtp(
-        email: widget.email!,
-        action: widget.isFromForgotPassword ? 'reset_password' : 'registration',
-      );
+      late Map<String, dynamic> result;
+      
+      if (widget.isFromForgotPassword) {
+        // Flux mot de passe oublié : utiliser forgotPassword
+        result = await AuthApiService.forgotPassword(
+          email: widget.email!,
+        );
+      } else {
+        // Flux inscription : utiliser resendOtp
+        result = await AuthApiService.resendOtp(
+          email: widget.email!,
+          action: 'registration',
+        );
+      }
 
       if (mounted) {
         if (result['success'] == true) {

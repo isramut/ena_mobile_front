@@ -108,7 +108,8 @@ class AuthApiService {
     }
   }
 
-  /// Vérification OTP pour inscription ou mot de passe oublié
+  /// Vérification OTP pour inscription uniquement
+  /// Note: Pour le flux "mot de passe oublié", utiliser directement resetPassword()
   static Future<Map<String, dynamic>> verifyOtp({
     required String email,
     required String otp,

@@ -60,36 +60,57 @@ class _AccueilScreenState extends State<AccueilScreen> {
       // 1️⃣ AFFICHAGE IMMÉDIAT DEPUIS LE CACHE
       await _showFromCache();
 
-      // 2️⃣ CHARGEMENT PARALLÈLE DE TOUTES LES DONNÉES API
+      // 2️⃣ CHARGEMENT PARALLÈLE DES DONNÉES UTILISATEUR ET NOTIFICATIONS
       final results = await Future.wait([
         AuthApiService.getUserInfo(token: token),
         AuthApiService.getUserNotifications(token: token),
-        AuthApiService.getCandidatureStatut(token: token),
         ProgramEventsApiService.getProgramEvents(token: token),
       ]);
 
       if (!mounted) return;
 
-      // 3️⃣ TRAITEMENT SYNCHRONISÉ DES RÉSULTATS
+      // 3️⃣ TRAITEMENT DES RÉSULTATS
       final userInfoResult = results[0];
       final notificationsResult = results[1];
-      final candidatureResult = results[2];
-      final eventsResult = results[3];
+      final eventsResult = results[2];
 
       // Traitement des données utilisateur
       if (userInfoResult['success'] == true && userInfoResult['data'] != null) {
         final userInfo = UserInfo.fromJson(userInfoResult['data']);
         
-        // Candidature (seulement si l'utilisateur a postulé)
+        // 4️⃣ CHARGEMENT CONDITIONNEL DE LA CANDIDATURE
         CandidatureInfo? candidatureInfo;
-        if (userInfo.hasApplied && candidatureResult['success'] == true && candidatureResult['data'] != null) {
-          candidatureInfo = CandidatureInfo.fromJson(candidatureResult['data']);
+        if (userInfo.hasApplied) {
+          print('🔍 Utilisateur a postulé (has_applied = true), récupération du statut de candidature...');
+          print('👤 ID utilisateur connecté: ${userInfo.id}');
+          
+          final candidatureResult = await AuthApiService.getCandidatureStatut(token: token);
+          print('📡 Réponse API candidature: success = ${candidatureResult['success']}, data = ${candidatureResult['data'] != null ? 'présent' : 'null'}');
+          
+          if (candidatureResult['success'] == true && candidatureResult['data'] != null) {
+            final candidature = CandidatureInfo.fromJson(candidatureResult['data']);
+            print('🔗 Vérification jointure: user.id = ${userInfo.id}, candidature.candidat = ${candidature.candidat}');
+            
+            // JOINTURE : Vérifier que l'utilisateur connecté correspond au candidat de la candidature
+            if (candidature.candidat == userInfo.id) {
+              candidatureInfo = candidature;
+              print('✅ Jointure validée ! Candidature chargée : statut = ${candidatureInfo.statut}, date = ${candidatureInfo.dateCreation}');
+            } else {
+              print('❌ Jointure échouée ! Cette candidature n\'appartient pas à l\'utilisateur connecté');
+            }
+          } else {
+            print('❌ Erreur lors de la récupération de la candidature: ${candidatureResult['error'] ?? 'Erreur inconnue'}');
+          }
+        } else {
+          print('ℹ️ Utilisateur n\'a pas encore postulé (has_applied = false)');
         }
 
         // Notifications
         List<NotificationModel> notifications = [];
         if (notificationsResult['success'] == true && notificationsResult['data'] != null) {
-          notifications = _parseNotifications(notificationsResult['data']);
+          // Utiliser la méthode de traitement des notifications
+          await _processNotifications(notificationsResult['data']);
+          notifications = _notifications; // Récupérer les notifications traitées
         }
 
         // Événements du programme
@@ -98,7 +119,8 @@ class _AccueilScreenState extends State<AccueilScreen> {
           programEvents = _parseProgramEvents(eventsResult['data']);
         }
 
-        // 4️⃣ MISE À JOUR SYNCHRONE DE TOUTE L'INTERFACE
+        // 5️⃣ MISE À JOUR SYNCHRONE DE TOUTE L'INTERFACE
+        print('🔄 Mise à jour de l\'état: has_applied = ${userInfo.hasApplied}, candidatureInfo = ${candidatureInfo != null ? 'présent (statut: ${candidatureInfo.statut})' : 'null'}');
         setState(() {
           _userInfo = userInfo;
           _hasApplied = userInfo.hasApplied;
@@ -118,6 +140,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
       }
     } catch (e) {
       print('🔴 Error loading dashboard: $e');
+      
+      // Fallback: essayer de charger les données une par une
+      print('🔄 Trying fallback loading method...');
+      await _loadUserInfoFallback();
+      
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -151,16 +178,28 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
           // Étape 3: Si l'utilisateur a postulé, récupérer les détails de candidature
           if (hasApplied) {
+            print('🔍 Utilisateur a postulé (fallback), récupération du statut de candidature...');
+            print('👤 ID utilisateur connecté (fallback): ${userInfo.id}');
+            
             final candidatureResult = await AuthApiService.getCandidatureStatut(token: token);
             
             if (mounted && candidatureResult['success'] == true && candidatureResult['data'] != null) {
-              final candidatureInfo = CandidatureInfo.fromJson(candidatureResult['data']);
+              final candidature = CandidatureInfo.fromJson(candidatureResult['data']);
+              print('🔗 Vérification jointure (fallback): user.id = ${userInfo.id}, candidature.candidat = ${candidature.candidat}');
               
-              setState(() {
-                _candidatureInfo = candidatureInfo;
-                _isLoading = false;
-              });
+              // JOINTURE : Vérifier que l'utilisateur connecté correspond au candidat de la candidature
+              if (candidature.candidat == userInfo.id) {
+                setState(() {
+                  _candidatureInfo = candidature;
+                  _isLoading = false;
+                });
+                print('✅ Jointure validée (fallback) ! Candidature chargée : statut = ${candidature.statut}');
+              } else {
+                print('❌ Jointure échouée (fallback) ! Cette candidature n\'appartient pas à l\'utilisateur connecté');
+                setState(() => _isLoading = false);
+              }
             } else {
+              print('❌ Erreur lors de la récupération de la candidature (fallback)');
               setState(() => _isLoading = false);
             }
           } else {
@@ -184,17 +223,8 @@ class _AccueilScreenState extends State<AccueilScreen> {
       final notificationsResult = await AuthApiService.getNotifications(token: token);
       
       if (mounted && notificationsResult['success'] == true && notificationsResult['data'] != null) {
-        final List<dynamic> notificationsData = notificationsResult['data'];
-        final notifications = notificationsData
-            .map((json) => NotificationModel.fromJson(json))
-            .toList();
-        
-        // Trier par date de création (plus récent en premier)
-        notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        
-        setState(() {
-          _notifications = notifications;
-        });
+        // Utiliser la méthode de traitement des notifications
+        await _processNotifications(notificationsResult['data']);
       }
     } catch (e) {
       // Gérer l'erreur silencieusement
@@ -261,21 +291,37 @@ class _AccueilScreenState extends State<AccueilScreen> {
     return 'Utilisateur';
   }
 
-  // Méthodes utilitaires pour la gestion dynamique de la candidature
+  // Méthodes utilitaires pour la gestion dynamique de la candidature selon les spécifications métier
   double _getProgressValue() {
-    if (!_hasApplied) return 0.0;
-    if (_candidatureInfo == null) return 0.2;
+    print('📊 _getProgressValue: has_applied = $_hasApplied, candidatureInfo = ${_candidatureInfo != null ? 'présent (statut: ${_candidatureInfo!.statut})' : 'null'}');
     
+    // Si has_applied = false : progressbar = 0%
+    if (!_hasApplied) {
+      print('📊 Retour: 0% (has_applied = false)');
+      return 0.0;
+    }
+
+    // Si has_applied = true mais pas de candidature trouvée (attente du chargement)
+    if (_candidatureInfo == null) {
+      print('📊 Retour: 0% (candidatureInfo = null, en attente)');
+      return 0.0;
+    }
+
+    // Si has_applied = true et candidature récupérée, on se base sur le statut
     switch (_candidatureInfo!.statut) {
       case 'envoye':
-        return 0.2;
+        print('📊 Retour: 20% (statut = envoye)');
+        return 0.2; // 20%
       case 'en_traitement':
-        return 0.7;
+        print('📊 Retour: 70% (statut = en_traitement)');
+        return 0.7; // 70%
       case 'valide':
       case 'rejete':
-        return 1.0;
+        print('📊 Retour: 100% (statut = ${_candidatureInfo!.statut})');
+        return 1.0; // 100%
       default:
-        return 0.2;
+        print('📊 Retour: 20% (statut = ${_candidatureInfo!.statut}, par défaut)');
+        return 0.2; // Par défaut 20%
     }
   }
 
@@ -285,16 +331,16 @@ class _AccueilScreenState extends State<AccueilScreen> {
   }
 
   Color _getProgressColor() {
-    if (!_hasApplied) return Colors.white;
-    if (_candidatureInfo == null) return Colors.white;
+    // Si has_applied = false ou pas de candidature
+    if (!_hasApplied || _candidatureInfo == null) return Colors.white;
     
     switch (_candidatureInfo!.statut) {
       case 'valide':
-        return const Color(0xFF27AE60);
+        return const Color(0xFF27AE60); // Vert pour validé
       case 'rejete':
-        return const Color(0xFFCD1719);
+        return const Color(0xFFCD1719); // Rouge pour rejeté
       default:
-        return Colors.white;
+        return Colors.white; // Blanc par défaut
     }
   }
 
@@ -304,7 +350,10 @@ class _AccueilScreenState extends State<AccueilScreen> {
   }
 
   String? _getCurrentStepText() {
+    // Si has_applied = false : afficher bouton "Soumettre ma candidature"
     if (!_hasApplied) return null;
+    
+    // Si has_applied = true mais pas de candidature trouvée
     if (_candidatureInfo == null) return "Étape en cours : Vérification des documents";
     
     switch (_candidatureInfo!.statut) {
@@ -313,15 +362,16 @@ class _AccueilScreenState extends State<AccueilScreen> {
       case 'en_traitement':
         return "Étape en cours : Vérification des documents";
       case 'valide':
-        return null; // Pas d'étape en cours, message de félicitation
+        return null; // Message de félicitation à la place
       case 'rejete':
-        return null; // Pas d'étape en cours, message de rejet
+        return null; // Message de rejet à la place
       default:
         return "Étape en cours : Vérification des documents";
     }
   }
 
   String? _getSpecialMessage() {
+    // Messages spéciaux selon le statut
     if (!_hasApplied || _candidatureInfo == null) return null;
     
     switch (_candidatureInfo!.statut) {
@@ -1048,70 +1098,103 @@ class _AccueilScreenState extends State<AccueilScreen> {
     String? date;
     String? badgeText;
 
-
-
-    if (!_hasApplied) {
-      if (isSubmissionStep) {
-        color = const Color(0xFF3678FF); // Bleu comme "Vérification"
-        icon = Icons.radio_button_unchecked;
+    if (isSubmissionStep) {
+      // Étape SOUMISSION
+      if (!_hasApplied) {
+        // has_applied = false : bleu, non soumis
+        color = const Color(0xFF3678FF); // Même bleu que "Vérification"
+        icon = Icons.radio_button_unchecked; // Icône non soumis
         subtitle = "Hâtez-vous d'envoyer votre candidature";
         badgeText = "Non soumis";
+        done = false;
+        active = false;
+        date = null; // Pas de date pour les non soumis
       } else {
+        // has_applied = true : mais on attend la candidature pour confirmer
+        if (_candidatureInfo == null) {
+          // Candidature en cours de chargement
+          color = const Color(0xFF3678FF);
+          icon = Icons.timelapse_rounded;
+          subtitle = "Chargement du statut...";
+          badgeText = "En cours";
+          done = false;
+          active = true;
+          date = null;
+        } else {
+          // Candidature chargée : terminé (vert)
+          color = const Color(0xFF27AE60);
+          icon = Icons.check_circle;
+          subtitle = "Candidature soumise avec succès";
+          badgeText = "Terminé";
+          done = true;
+          active = false;
+          // Date de soumission OBLIGATOIRE (date_creation de la candidature)
+          date = _formatDate(_candidatureInfo!.dateCreation);
+        }
+      }
+    } else {
+      // Étape VÉRIFICATION
+      if (!_hasApplied) {
+        // has_applied = false : en attente
         color = const Color(0xFF3678FF);
         icon = Icons.timelapse_rounded;
         subtitle = "Vérification des documents";
         badgeText = "En attente";
-      }
-    } else {
-      if (isSubmissionStep) {
-        color = const Color(0xFF27AE60);
-        icon = Icons.check_circle;
-        subtitle = "Candidature soumise avec succès";
-        done = true;
-        badgeText = "Terminé";
-        if (_candidatureInfo != null) {
-          date = _formatDate(_candidatureInfo!.dateCreation);
-        }
+        done = false;
+        active = false;
+        date = null; // Pas de date pour les en attente
       } else {
-        // Logique pour vérification basée sur le statut
-        switch (_candidatureInfo?.statut) {
-          case 'envoye':
-            color = const Color(0xFF3678FF);
-            icon = Icons.timelapse_rounded;
-            subtitle = "Vérification des documents";
-            active = true;
-            badgeText = "En cours";
-            // Afficher la date de soumission sous l'étape "Vérification"
-            if (_candidatureInfo != null) {
-              date = _formatDate(_candidatureInfo!.dateCreation);
-            }
-            break;
-          case 'en_traitement':
-            color = const Color(0xFF3678FF);
-            icon = Icons.timelapse_rounded;
-            subtitle = "Vérification des documents";
-            active = true;
-            badgeText = "En cours";
-            break;
-          case 'valide':
-          case 'rejete':
-            color = const Color(0xFF27AE60);
-            icon = Icons.check_circle;
-            subtitle = "Vérification des documents";
-            done = true;
-            badgeText = "Terminée";
-            break;
-          default:
-            color = const Color(0xFF3678FF);
-            icon = Icons.timelapse_rounded;
-            subtitle = "Vérification des documents";
-            active = true;
-            badgeText = "En cours";
+        // has_applied = true : logique basée sur le statut
+        if (_candidatureInfo == null) {
+          // Candidature en cours de chargement
+          color = const Color(0xFF3678FF);
+          icon = Icons.timelapse_rounded;
+          subtitle = "Chargement du statut...";
+          badgeText = "En cours";
+          done = false;
+          active = true;
+          date = null;
+        } else {
+          switch (_candidatureInfo!.statut) {
+            case 'envoye':
+              color = const Color(0xFF3678FF);
+              icon = Icons.timelapse_rounded;
+              subtitle = "Vérification des documents";
+              badgeText = "En cours";
+              done = false;
+              active = true;
+              date = null; // Pas de date pour "En cours"
+              break;
+            case 'en_traitement':
+              color = const Color(0xFF3678FF);
+              icon = Icons.timelapse_rounded;
+              subtitle = "Vérification des documents";
+              badgeText = "En cours";
+              done = false;
+              active = true;
+              date = null; // Pas de date pour "En cours"
+              break;
+            case 'valide':
+            case 'rejete':
+              color = const Color(0xFF27AE60);
+              icon = Icons.check_circle;
+              subtitle = "Vérification des documents";
+              badgeText = "Terminée";
+              done = true;
+              active = false;
+              date = null; // Pas de date pour "Terminée"
+              break;
+            default:
+              color = const Color(0xFF3678FF);
+              icon = Icons.timelapse_rounded;
+              subtitle = "Vérification des documents";
+              badgeText = "En cours";
+              done = false;
+              active = true;
+          }
         }
       }
     }
-
-
 
     return _buildStepRow(
       color: color,

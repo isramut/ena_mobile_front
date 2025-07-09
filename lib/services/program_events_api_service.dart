@@ -37,12 +37,23 @@ class ProgramEventsApiService {
           // Si les données sont paginées
           final results = data['results'] as List;
           events = results.map((eventJson) => ProgramEvent.fromJson(eventJson as Map<String, dynamic>)).toList();
+        } else if (data is Map && data['data'] != null) {
+          // Si les données sont dans un champ 'data'
+          final results = data['data'] as List? ?? [];
+          events = results.map((eventJson) => ProgramEvent.fromJson(eventJson as Map<String, dynamic>)).toList();
         }
         
         return {
           'success': true,
           'data': events,
           'raw_data': data,
+        };
+      } else if (response.statusCode == 404) {
+        // 404 peut signifier qu'il n'y a pas d'événements, pas forcément une erreur
+        return {
+          'success': true,
+          'data': <ProgramEvent>[],
+          'message': 'Aucun événement disponible',
         };
       } else {
         return {
@@ -52,6 +63,15 @@ class ProgramEventsApiService {
         };
       }
     } catch (e) {
+      // Gestion spéciale pour les erreurs de parsing qui pourraient indiquer une réponse vide
+      if (e.toString().contains('FormatException') || e.toString().contains('Unexpected end')) {
+        return {
+          'success': true,
+          'data': <ProgramEvent>[],
+          'message': 'Aucun événement disponible',
+        };
+      }
+      
       return {
         'success': false,
         'error': 'Erreur de connexion au serveur',

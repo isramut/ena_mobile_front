@@ -38,21 +38,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
       
       if (mounted) {
         if (result['success'] == true) {
+          final events = result['data'] as List<ProgramEvent>?;
           setState(() {
-            _events = result['data'] as List<ProgramEvent>;
+            _events = events ?? [];
             _isLoading = false;
           });
         } else {
-          setState(() {
-            _error = result['error'] ?? 'Erreur lors du chargement des événements';
-            _isLoading = false;
-          });
+          // Distinguer les vraies erreurs des réponses vides
+          final errorMessage = result['error']?.toString() ?? '';
+          
+          // Si l'erreur indique qu'il n'y a pas d'événements, traiter comme un cas normal
+          if (errorMessage.toLowerCase().contains('aucun événement') ||
+              errorMessage.toLowerCase().contains('no events') ||
+              errorMessage.toLowerCase().contains('pas d\'événement') ||
+              result['data'] is List && (result['data'] as List).isEmpty) {
+            setState(() {
+              _events = [];
+              _isLoading = false;
+            });
+          } else {
+            setState(() {
+              _error = errorMessage.isNotEmpty ? errorMessage : 'Erreur lors du chargement des événements';
+              _isLoading = false;
+            });
+          }
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Erreur de connexion';
+          _error = 'Erreur de connexion au serveur';
           _isLoading = false;
         });
       }
@@ -188,7 +203,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              "Il n'y a pas encore d'événement",
+              "Aucun événement en cours",
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -198,7 +213,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Les nouveaux événements du calendrier apparaîtront ici.",
+              "Il n'y a actuellement aucun événement programmé. Les nouveaux événements du calendrier apparaîtront ici dès qu'ils seront disponibles.",
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),

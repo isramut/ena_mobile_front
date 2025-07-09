@@ -10,7 +10,11 @@ class NewPasswordScreen extends StatefulWidget {
   final String email;
   final String? otp; // Code OTP validé depuis email_verify
 
-  const NewPasswordScreen({super.key, required this.email, this.otp});
+  const NewPasswordScreen({
+    super.key, 
+    required this.email, 
+    this.otp,
+  });
 
   @override
   State<NewPasswordScreen> createState() => _NewPasswordScreenState();
@@ -280,7 +284,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
       final result = await AuthApiService.resetPassword(
         email: widget.email,
         newPassword: _newPassword,
-        otp: widget.otp ?? "", // Utilise le code OTP validé
+        otp: widget.otp ?? "", // Utilise l'OTP validé depuis email_verify
       );
 
       setState(() => _loading = false);
@@ -292,6 +296,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
             title: "Mot de passe mis à jour",
             message: "Votre mot de passe a été mis à jour avec succès. Vous pouvez maintenant vous connecter.",
             onContinue: () {
+              // Fermer la pop-up et rediriger vers la page de connexion
               Navigator.of(context).pop(); // Ferme la pop-up new_password
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -328,6 +333,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Dialog pour le nouveau mot de passe
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
@@ -343,18 +349,27 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // En-tête
-                    Icon(
-                      Icons.lock_reset_rounded,
-                      color: const Color(0xFF3678FF),
-                      size: 48,
-                    ),
-                    const SizedBox(height: 12),
+              child: _buildForm(theme),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(ThemeData theme) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // En-tête
+          Icon(
+            Icons.lock_reset_rounded,
+            color: const Color(0xFF3678FF),
+            size: 48,
+          ),
+          const SizedBox(height: 12),
                     Text(
                       "Nouveau mot de passe",
                       style: GoogleFonts.poppins(
@@ -502,6 +517,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
+                          // Bouton Annuler pour fermer le dialog
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
                             child: Text(
@@ -515,13 +531,8 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                           ),
                         ],
                       ),
-                  ],
-                ),
+                ],
               ),
-            ),
-          ),
-        ),
-      ),
-    );
+            );
   }
 }

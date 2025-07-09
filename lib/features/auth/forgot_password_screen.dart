@@ -28,7 +28,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() => loading = false);
 
       if (result['success'] == true) {
-        // Succès - Redirection vers vérification email
+        // Succès - Redirection vers vérification OTP (nouveau flux)
         if (mounted) {
           Navigator.push(
             context,
