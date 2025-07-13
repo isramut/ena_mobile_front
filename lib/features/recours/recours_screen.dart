@@ -1,9 +1,8 @@
 import 'dart:io';
-import 'package:ena_mobile_front/config/api_config.dart';
+import 'package:ena_mobile_front/models/recours_models.dart';
+import 'package:ena_mobile_front/services/recours_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 
 class RecoursScreen extends StatefulWidget {
   const RecoursScreen({super.key});
@@ -15,11 +14,17 @@ class RecoursScreen extends StatefulWidget {
 class _RecoursScreenState extends State<RecoursScreen> {
   final _formKey = GlobalKey<FormState>();
   final _motifController = TextEditingController();
+  final _justificationController = TextEditingController();
   final _messageController = TextEditingController();
 
   String selectedMotif = '';
   bool loading = false;
+  bool isLoadingRecours = true;
   List<File> attachedFiles = [];
+  List<Recours> mesRecours = [];
+  String? errorMessage;
+  bool hasError = false;
+  RecoursValidationError? validationErrors;
 
   final List<String> motifsRecours = [
     'Erreur dans l\'évaluation du dossier',
@@ -31,29 +36,50 @@ class _RecoursScreenState extends State<RecoursScreen> {
   ];
 
   @override
-  void dispose() {
-    _motifController.dispose();
-    _messageController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadMesRecours();
   }
 
-  Future<void> _pickFile() async {
+  /// Charge les recours existants depuis l'API
+  Future<void> _loadMesRecours() async {
+    setState(() {
+      isLoadingRecours = true;
+      hasError = false;
+    });
+
     try {
-      final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-      if (picked != null) {
+      final result = await RecoursApiService.getMesRecoursWithCache();
+      
+      if (result['success'] == true) {
+        final RecoursResponse response = result['data'];
         setState(() {
-          attachedFiles.add(File(picked.path));
+          mesRecours = response.recours;
+          isLoadingRecours = false;
+        });
+        print('✅ Recours chargés: ${mesRecours.length} éléments');
+      } else {
+        setState(() {
+          isLoadingRecours = false;
+          hasError = true;
+          errorMessage = result['error'] ?? 'Erreur lors du chargement';
         });
       }
     } catch (e) {
-      _showErrorSnackBar('Erreur lors de la sélection du fichier');
+      setState(() {
+        isLoadingRecours = false;
+        hasError = true;
+        errorMessage = 'Erreur de connexion: $e';
+      });
     }
   }
 
-  void _removeFile(int index) {
-    setState(() {
-      attachedFiles.removeAt(index);
-    });
+  @override
+  void dispose() {
+    _motifController.dispose();
+    _justificationController.dispose();
+    _messageController.dispose();
+    super.dispose();
   }
 
   Future<void> _submitRecours() async {
@@ -63,38 +89,64 @@ class _RecoursScreenState extends State<RecoursScreen> {
       return;
     }
 
-    setState(() => loading = true);
+    // Validation côté client
+    final clientValidationErrors = RecoursApiService.validateRecoursData(
+      motifRejet: selectedMotif,
+      justification: _justificationController.text,
+    );
+
+    if (clientValidationErrors.isNotEmpty) {
+      setState(() {
+        this.validationErrors = RecoursValidationError(errors: {
+          for (var entry in clientValidationErrors.entries)
+            entry.key: [entry.value!]
+        });
+      });
+      return;
+    }
+
+    setState(() {
+      loading = true;
+      validationErrors = null;
+    });
 
     try {
-      // Simulation d'envoi - Remplacer par l'API réelle
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiConfig.baseUrl}/api/recours/'),
+      final result = await RecoursApiService.creerRecours(
+        motifRejet: selectedMotif,
+        justification: _justificationController.text,
+        documents: [], // TODO: Gérer l'upload de fichiers
       );
 
-      // Ajouter les champs
-      request.fields['motif'] = selectedMotif;
-      request.fields['message'] = _messageController.text;
-
-      // Ajouter les fichiers
-      for (var file in attachedFiles) {
-        request.files.add(
-          await http.MultipartFile.fromPath('documents', file.path),
-        );
+      if (result['success'] == true) {
+        final Recours nouveauRecours = result['data'];
+        _showSuccessDialog(nouveauRecours);
+        
+        // Recharger la liste des recours
+        await _loadMesRecours();
+        
+        // Réinitialiser le formulaire
+        _resetForm();
+      } else {
+        if (result.containsKey('validation_errors')) {
+          setState(() {
+            // Convertir les erreurs de validation depuis l'API en RecoursValidationError
+            final Map<String, dynamic> apiErrors = result['validation_errors'];
+            final Map<String, List<String>> convertedErrors = {};
+            
+            for (var entry in apiErrors.entries) {
+              if (entry.value is List) {
+                convertedErrors[entry.key] = List<String>.from(entry.value);
+              } else if (entry.value is String) {
+                convertedErrors[entry.key] = [entry.value];
+              }
+            }
+            
+            validationErrors = RecoursValidationError(errors: convertedErrors);
+          });
+        } else {
+          _showErrorSnackBar(result['error'] ?? 'Erreur lors de l\'envoi du recours');
+        }
       }
-
-      // Simulation - En réalité, faire l'appel API
-      await Future.delayed(const Duration(seconds: 2));
-
-      // final response = await request.send();
-      // if (response.statusCode == 200) {
-      //   _showSuccessDialog();
-      // } else {
-      //   _showErrorSnackBar('Erreur lors de l\'envoi du recours');
-      // }
-
-      // Pour la simulation
-      _showSuccessDialog();
     } catch (e) {
       _showErrorSnackBar('Erreur de connexion au serveur');
     } finally {
@@ -102,7 +154,17 @@ class _RecoursScreenState extends State<RecoursScreen> {
     }
   }
 
-  void _showSuccessDialog() {
+  void _resetForm() {
+    setState(() {
+      selectedMotif = '';
+      _motifController.clear();
+      _justificationController.clear();
+      attachedFiles.clear();
+      validationErrors = null;
+    });
+  }
+
+  void _showSuccessDialog(Recours recours) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -115,8 +177,51 @@ class _RecoursScreenState extends State<RecoursScreen> {
             const Text('Recours envoyé'),
           ],
         ),
-        content: const Text(
-          'Votre recours a été envoyé avec succès. Vous recevrez une réponse dans les 15 jours ouvrables.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Votre recours a été envoyé avec succès.',
+              style: GoogleFonts.poppins(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Numéro de recours: ${recours.id}',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  Text(
+                    'Statut: ${recours.statutFormate}',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  Text(
+                    'Date: ${recours.dateCreationFormatee}',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Vous recevrez une réponse dans les 15 jours ouvrables.',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
         ),
         actions: [
           ElevatedButton(
@@ -150,7 +255,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: Text(
-          'Faire un recours',
+          'Mes recours',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -159,349 +264,652 @@ class _RecoursScreenState extends State<RecoursScreen> {
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadMesRecours,
+            tooltip: 'Actualiser',
+          ),
+        ],
       ),
       body: Stack(
         children: [
           SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Section des recours existants
+                if (isLoadingRecours)
+                  _buildLoadingSection()
+                else if (hasError)
+                  _buildErrorSection()
+                else
+                  _buildRecoursExistants(),
+
+                const SizedBox(height: 24),
+
+                // Section nouveau recours
+                _buildNouveauRecoursSection(theme, primaryColor),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Section de chargement
+  Widget _buildLoadingSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Chargement de vos recours...',
+              style: GoogleFonts.poppins(fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Section d'erreur
+  Widget _buildErrorSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 60,
+              color: Colors.red.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Erreur de chargement',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.red.shade700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage ?? 'Une erreur s\'est produite',
+              style: GoogleFonts.poppins(fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadMesRecours,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Réessayer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Section des recours existants
+  Widget _buildRecoursExistants() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Mes recours (${mesRecours.length})',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        if (mesRecours.isEmpty)
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Bandeau d'information
-                  Card(
-                    color: Colors.blue.shade50,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  Icon(
+                    Icons.inbox_outlined,
+                    size: 60,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Aucun recours trouvé',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade600,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Colors.blue.shade700,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Le recours doit être déposé dans les 48h suivant la notification d\'élimination.',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: Colors.blue.shade800,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Vous n\'avez pas encore déposé de recours.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey.shade500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...mesRecours.map((recours) => _buildRecoursCard(recours)).toList(),
+      ],
+    );
+  }
+
+  /// Card pour afficher un recours individuel
+  Widget _buildRecoursCard(Recours recours) {
+    Color statusColor;
+    IconData statusIcon;
+    
+    switch (recours.statut) {
+      case 'en_attente':
+        statusColor = Colors.orange;
+        statusIcon = Icons.schedule;
+        break;
+      case 'en_cours':
+        statusColor = Colors.blue;
+        statusIcon = Icons.timelapse;
+        break;
+      case 'accepte':
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'rejete':
+        statusColor = Colors.red;
+        statusIcon = Icons.cancel;
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.help_outline;
+    }
+
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: statusColor),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 16, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        recours.statutFormate,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  recours.dateCreationFormatee,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Motif: ${recours.motifRejet}',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              recours.justification,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+                height: 1.3,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (recours.reponseAdmin != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Réponse de l\'administration:',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      recours.reponseAdmin!,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.blue.shade600,
+                      ),
+                    ),
+                    if (recours.dateTraitementFormatee != null)
+                      Text(
+                        'Traitée le: ${recours.dateTraitementFormatee}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.blue.shade500,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Section pour créer un nouveau recours
+  Widget _buildNouveauRecoursSection(ThemeData theme, Color primaryColor) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Nouveau recours',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Bandeau d'information
+          Card(
+            color: Colors.blue.shade50,
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.blue.shade700,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Le recours doit être déposé dans les 48h suivant la notification d\'élimination.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.blue.shade800,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Formulaire principal
-                  Card(
-                    color: theme.colorScheme.surface,
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Formulaire de recours',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Motif du recours
-                          Text(
-                            'Motif du recours *',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: theme.colorScheme.outline.withValues(
-                                  alpha: 0.5,
-                                ),
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: motifsRecours.map((motif) {
-                                return RadioListTile<String>(
-                                  title: Text(
-                                    motif,
-                                    style: GoogleFonts.poppins(fontSize: 13),
-                                  ),
-                                  value: motif,
-                                  groupValue: selectedMotif,
-                                  activeColor: primaryColor,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectedMotif = value!;
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Message détaillé
-                          Text(
-                            'Message détaillé *',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _messageController,
-                            maxLines: 8,
-                            maxLength: 3000,
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Décrivez en détail les raisons de votre recours...',
-                              hintStyle: GoogleFonts.poppins(
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
-                                ),
-                                fontSize: 13,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: theme.colorScheme.outline,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: theme.colorScheme.outline.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: primaryColor,
-                                  width: 2,
-                                ),
-                              ),
-                              filled: true,
-                              fillColor: theme.colorScheme.surface,
-                              contentPadding: const EdgeInsets.all(16),
-                              counterStyle: GoogleFonts.poppins(fontSize: 12),
-                            ),
-                            style: GoogleFonts.poppins(fontSize: 14),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Veuillez saisir votre message';
-                              }
-                              if (value.trim().length < 50) {
-                                return 'Le message doit contenir au moins 50 caractères';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Pièces justificatives
-                          Text(
-                            'Pièces justificatives (optionnel)',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // Bouton d'ajout de fichier
-                          OutlinedButton.icon(
-                            onPressed: _pickFile,
-                            icon: const Icon(Icons.attach_file),
-                            label: const Text('Joindre un fichier'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: primaryColor,
-                              side: BorderSide(color: primaryColor),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 16,
-                              ),
-                            ),
-                          ),
-
-                          // Liste des fichiers joints
-                          if (attachedFiles.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            ...attachedFiles.asMap().entries.map((entry) {
-                              int index = entry.key;
-                              File file = entry.value;
-                              String fileName = file.path.split('/').last;
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.green.shade200,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.description,
-                                      color: Colors.green.shade700,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        fileName,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          color: Colors.green.shade800,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () => _removeFile(index),
-                                      icon: Icon(
-                                        Icons.close,
-                                        color: Colors.red.shade600,
-                                        size: 18,
-                                      ),
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
-
-                          const SizedBox(height: 30),
-
-                          // Bouton d'envoi
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: loading ? null : _submitRecours,
-                              icon: loading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.send),
-                              label: Text(
-                                loading
-                                    ? 'Envoi en cours...'
-                                    : 'Envoyer le recours',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                                foregroundColor: Colors.white,
-                                textStyle: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                elevation: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Note informative
-                  Card(
-                    color: Colors.orange.shade50,
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.warning_amber,
-                                color: Colors.orange.shade700,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Important',
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange.shade800,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '• Le recours sera examiné par une commission indépendante\n'
-                            '• Vous recevrez une réponse dans les 15 jours ouvrables\n'
-                            '• La décision de la commission est définitive',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.orange.shade800,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
+          const SizedBox(height: 20),
+
+          // Formulaire principal
+          Card(
+            color: theme.colorScheme.surface,
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Formulaire de recours',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Motif du recours
+                  Text(
+                    'Motif du recours *',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Afficher les erreurs de validation pour le motif
+                  if (validationErrors?.hasErrorForField('motif_rejet') == true)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        validationErrors!.getErrorsForField('motif_rejet').join(', '),
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                    ),
+                  
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: validationErrors?.hasErrorForField('motif_rejet') == true
+                            ? Colors.red
+                            : theme.colorScheme.outline.withOpacity(0.5),
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: motifsRecours.map((motif) {
+                        return RadioListTile<String>(
+                          title: Text(
+                            motif,
+                            style: GoogleFonts.poppins(fontSize: 13),
+                          ),
+                          value: motif,
+                          groupValue: selectedMotif,
+                          activeColor: primaryColor,
+                          onChanged: (value) {
+                            setState(() {
+                              selectedMotif = value!;
+                              // Effacer les erreurs de validation
+                              if (validationErrors != null) {
+                                validationErrors!.errors.remove('motif_rejet');
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Justification détaillée
+                  Text(
+                    'Justification détaillée *',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Afficher les erreurs de validation pour la justification
+                  if (validationErrors?.hasErrorForField('justification') == true)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        validationErrors!.getErrorsForField('justification').join(', '),
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                    ),
+                  
+                  TextFormField(
+                    controller: _justificationController,
+                    maxLines: 6,
+                    decoration: InputDecoration(
+                      hintText: 'Expliquez en détail les raisons de votre recours...',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.grey.shade500,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: validationErrors?.hasErrorForField('justification') == true
+                              ? Colors.red
+                              : theme.colorScheme.outline.withOpacity(0.5),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: validationErrors?.hasErrorForField('justification') == true
+                              ? Colors.red
+                              : theme.colorScheme.outline.withOpacity(0.5),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: validationErrors?.hasErrorForField('justification') == true
+                              ? Colors.red
+                              : primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'La justification est obligatoire';
+                      }
+                      if (value.trim().length < 50) {
+                        return 'La justification doit contenir au moins 50 caractères';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) {
+                      // Effacer les erreurs de validation
+                      if (validationErrors != null) {
+                        validationErrors!.errors.remove('justification');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Section pièces jointes (TODO: À implémenter)
+                  Text(
+                    'Pièces justificatives (optionnel)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withOpacity(0.3),
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey.shade50,
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.cloud_upload_outlined,
+                          size: 40,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Upload de fichiers bientôt disponible',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Bouton de soumission
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: loading ? null : _submitRecours,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: loading
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Envoi en cours...',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              'Soumettre le recours',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Informations importantes
+          const SizedBox(height: 20),
+          Card(
+            color: Colors.orange.shade50,
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber,
+                        color: Colors.orange.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Important',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade800,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '• Le recours sera examiné par une commission indépendante\n'
+                    '• Vous recevrez une réponse dans les 15 jours ouvrables\n'
+                    '• La décision de la commission est définitive',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.orange.shade800,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 80),
         ],
       ),
     );

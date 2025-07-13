@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ena_mobile_front/models/user_info.dart';
 import '../services/image_cache_service.dart';
-import '../services/image_cache_service.dart';
 
 class UserAvatar extends StatefulWidget {
   final UserInfo? userInfo;
@@ -21,7 +20,6 @@ class UserAvatar extends StatefulWidget {
 
 class _UserAvatarState extends State<UserAvatar> {
   bool _imageError = false;
-  String? _lastImageUrl;
 
   @override
   void didUpdateWidget(UserAvatar oldWidget) {
@@ -30,7 +28,6 @@ class _UserAvatarState extends State<UserAvatar> {
     if (oldWidget.userInfo?.fullProfilePictureUrl != widget.userInfo?.fullProfilePictureUrl) {
       setState(() {
         _imageError = false;
-        _lastImageUrl = widget.userInfo?.fullProfilePictureUrl;
       });
     }
   }

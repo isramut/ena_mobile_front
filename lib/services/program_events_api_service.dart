@@ -37,23 +37,12 @@ class ProgramEventsApiService {
           // Si les données sont paginées
           final results = data['results'] as List;
           events = results.map((eventJson) => ProgramEvent.fromJson(eventJson as Map<String, dynamic>)).toList();
-        } else if (data is Map && data['data'] != null) {
-          // Si les données sont dans un champ 'data'
-          final results = data['data'] as List? ?? [];
-          events = results.map((eventJson) => ProgramEvent.fromJson(eventJson as Map<String, dynamic>)).toList();
         }
         
         return {
           'success': true,
           'data': events,
           'raw_data': data,
-        };
-      } else if (response.statusCode == 404) {
-        // 404 peut signifier qu'il n'y a pas d'événements, pas forcément une erreur
-        return {
-          'success': true,
-          'data': <ProgramEvent>[],
-          'message': 'Aucun événement disponible',
         };
       } else {
         return {
@@ -63,15 +52,6 @@ class ProgramEventsApiService {
         };
       }
     } catch (e) {
-      // Gestion spéciale pour les erreurs de parsing qui pourraient indiquer une réponse vide
-      if (e.toString().contains('FormatException') || e.toString().contains('Unexpected end')) {
-        return {
-          'success': true,
-          'data': <ProgramEvent>[],
-          'message': 'Aucun événement disponible',
-        };
-      }
-      
       return {
         'success': false,
         'error': 'Erreur de connexion au serveur',
@@ -124,5 +104,42 @@ class ProgramEventsApiService {
   /// Récupère les 3 derniers événements à venir pour la home
   static Future<Map<String, dynamic>> getHomeEvents({String? token}) async {
     return getUpcomingEvents(token: token, limit: 3);
+  }
+
+  /// Récupère les 3 événements les plus récents pour la page d'accueil
+  /// (mélange d'événements en cours, à venir, et récemment terminés)
+  static Future<Map<String, dynamic>> getRecentEventsForHome({String? token}) async {
+    try {
+      final result = await getProgramEvents(token: token);
+      
+      if (result['success'] == true) {
+        final List<ProgramEvent> allEvents = result['data'] as List<ProgramEvent>;
+        
+        // Filtrer les événements actifs uniquement
+        final activeEvents = allEvents
+            .where((event) => event.isActive)
+            .toList();
+        
+        // Trier par date de début (les plus récents en premier, qu'ils soient passés ou à venir)
+        activeEvents.sort((a, b) => b.startDatetime.compareTo(a.startDatetime));
+        
+        // Prendre les 3 premiers
+        final recentEvents = activeEvents.take(3).toList();
+        
+        return {
+          'success': true,
+          'data': recentEvents,
+          'total_count': activeEvents.length,
+        };
+      } else {
+        return result;
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erreur lors de la récupération des événements récents',
+        'details': e.toString(),
+      };
+    }
   }
 }

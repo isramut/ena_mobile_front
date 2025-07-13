@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ena_mobile_front/models/quiz_models.dart';
+import 'package:ena_mobile_front/services/quiz_api_service.dart';
+import 'package:ena_mobile_front/widgets/error_popup.dart';
 import 'dart:async';
 
 class QuizContent extends StatefulWidget {
@@ -11,8 +14,17 @@ class QuizContent extends StatefulWidget {
 
 class _QuizContentState extends State<QuizContent>
     with TickerProviderStateMixin {
+  
+  // État de chargement des données API
+  bool isLoadingData = true;
+  bool hasError = false;
+  String errorMessage = '';
+  QuizResponse? quizResponse;
+  List<QuizModule> availableModules = [];
+  QuizModule? selectedModule;
+  
   // Configuration du quiz
-  String selectedLevel = 'Débutant';
+  String selectedLevel = 'debutant'; // Changé pour correspondre à l'API
   String selectedTheme = 'Culture Générale';
   int selectedQuestionCount = 10;
 
@@ -30,51 +42,12 @@ class _QuizContentState extends State<QuizContent>
   late AnimationController _progressController;
   late AnimationController _cardController;
 
-  // Questions statiques pour le prototype
-  List<QuizQuestion> questions = [
-    QuizQuestion(
-      question:
-          "Quelle est la capitale de la République Démocratique du Congo ?",
-      options: ["Lubumbashi", "Kinshasa", "Goma", "Bukavu"],
-      correctAnswer: "Kinshasa",
-      explanation:
-          "Kinshasa est la capitale et la plus grande ville de la RDC.",
-    ),
-    QuizQuestion(
-      question: "En quelle année la RDC a-t-elle obtenu son indépendance ?",
-      options: ["1958", "1960", "1962", "1965"],
-      correctAnswer: "1960",
-      explanation:
-          "La RDC a obtenu son indépendance de la Belgique le 30 juin 1960.",
-    ),
-    QuizQuestion(
-      question: "Qui était le premier président de la RDC ?",
-      options: [
-        "Mobutu Sese Seko",
-        "Joseph Kasavubu",
-        "Patrice Lumumba",
-        "Laurent-Désiré Kabila",
-      ],
-      correctAnswer: "Joseph Kasavubu",
-      explanation:
-          "Joseph Kasavubu fut le premier président de la République du Congo (1960-1965).",
-    ),
-    QuizQuestion(
-      question: "Quelle est la monnaie officielle de la RDC ?",
-      options: ["Dollar américain", "Euro", "Franc congolais", "Dirham"],
-      correctAnswer: "Franc congolais",
-      explanation:
-          "Le franc congolais (CDF) est la monnaie officielle de la RDC.",
-    ),
-    QuizQuestion(
-      question: "Combien de provinces compte la RDC actuellement ?",
-      options: ["11", "25", "26", "30"],
-      correctAnswer: "26",
-      explanation: "Depuis 2015, la RDC est divisée en 26 provinces.",
-    ),
-  ];
+  // Questions provenant de l'API (plus de questions statiques !)
+  List<QuizQuestion> questions = []; // Maintenant vide, sera rempli par l'API
 
-  final List<String> levels = ['Débutant', 'Intermédiaire', 'Avancé'];
+  // Listes de configuration (adaptées pour l'API)
+  final List<String> levels = ['debutant', 'moyen', 'avance']; // Noms API
+  final List<String> levelDisplayNames = ['Débutant', 'Moyen', 'Avancé']; // Affichage
   final List<String> themes = [
     'Culture Générale',
     'Droit Public',
@@ -96,6 +69,66 @@ class _QuizContentState extends State<QuizContent>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+    
+    // Charger les données depuis l'API
+    _loadQuizData();
+  }
+
+  /// Charge les données du quiz depuis l'API
+  Future<void> _loadQuizData() async {
+    setState(() {
+      isLoadingData = true;
+      hasError = false;
+    });
+
+    try {
+      final result = await QuizApiService.getQuizModulesWithCache();
+      
+      if (result['success'] == true) {
+        final QuizResponse response = result['data'];
+        setState(() {
+          quizResponse = response;
+          availableModules = response.modules.where((m) => m.isActive).toList();
+          isLoadingData = false;
+          
+          // Sélectionner le premier module du niveau sélectionné
+          _updateSelectedModule();
+        });
+        
+        print('✅ Quiz data loaded: ${availableModules.length} modules');
+      } else {
+        setState(() {
+          isLoadingData = false;
+          hasError = true;
+          errorMessage = result['error'] ?? 'Erreur lors du chargement';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoadingData = false;
+        hasError = true;
+        errorMessage = 'Erreur de connexion: $e';
+      });
+    }
+  }
+
+  /// Met à jour le module sélectionné selon le niveau et le thème
+  void _updateSelectedModule() {
+    final modulesForLevel = availableModules.where((m) => 
+      m.level == selectedLevel && 
+      m.title.toLowerCase().contains(selectedTheme.toLowerCase())
+    ).toList();
+    
+    // Si aucun module ne correspond au thème exact, prendre le premier du niveau
+    if (modulesForLevel.isEmpty) {
+      final fallbackModules = availableModules.where((m) => m.level == selectedLevel).toList();
+      selectedModule = fallbackModules.isNotEmpty ? fallbackModules.first : null;
+    } else {
+      selectedModule = modulesForLevel.first;
+    }
+    
+    print('📚 Module sélectionné: ${selectedModule?.title ?? 'Aucun'}');
+    print('🎯 Niveau: $selectedLevel, Thème: $selectedTheme');
   }
 
   @override
@@ -107,15 +140,27 @@ class _QuizContentState extends State<QuizContent>
   }
 
   void startQuiz() {
+    // Vérifier qu'un module est sélectionné
+    if (selectedModule == null || selectedModule!.questions.isEmpty) {
+      _showError('Aucun module sélectionné ou module vide');
+      return;
+    }
+
     setState(() {
       quizStarted = true;
       currentQuestionIndex = 0;
       score = 0;
       quizCompleted = false;
     });
-    // Mélanger les questions et prendre le nombre sélectionné
+    
+    // Utiliser les questions du module sélectionné depuis l'API
+    questions = List.from(selectedModule!.questions);
     questions.shuffle();
     questions = questions.take(selectedQuestionCount).toList();
+    
+    print('🎯 Quiz démarré: ${selectedModule!.title}');
+    print('📝 Questions: ${questions.length}');
+    
     _startTimer();
   }
 
@@ -144,8 +189,13 @@ class _QuizContentState extends State<QuizContent>
       answerSubmitted = true;
     });
 
-    if (answer == questions[currentQuestionIndex].correctAnswer) {
-      score++;
+    // Vérifier si la réponse est correcte en comparant avec l'index de l'option correcte
+    if (answer != null) {
+      final currentQuestion = questions[currentQuestionIndex];
+      final answerIndex = currentQuestion.options.indexOf(answer);
+      if (answerIndex == currentQuestion.correctOption) {
+        score++;
+      }
     }
 
     // Attendre 1 seconde avant de passer à la question suivante (sans afficher le résultat)
@@ -213,6 +263,73 @@ class _QuizContentState extends State<QuizContent>
 
   Widget _buildSetupScreen() {
     final theme = Theme.of(context);
+    
+    // Affichage du chargement
+    if (isLoadingData) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Chargement du quiz...',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Affichage d'erreur
+    if (hasError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 80,
+                color: theme.colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Erreur de chargement',
+                style: GoogleFonts.poppins(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.error,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                errorMessage,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadQuizData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Réessayer'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -722,8 +839,14 @@ class _QuizContentState extends State<QuizContent>
       child: Column(
         children: levels.map((level) {
           final isSelected = selectedLevel == level;
+          final displayName = levelDisplayNames[levels.indexOf(level)];
           return InkWell(
-            onTap: () => setState(() => selectedLevel = level),
+            onTap: () {
+              setState(() {
+                selectedLevel = level;
+                _updateSelectedModule();
+              });
+            },
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -745,12 +868,16 @@ class _QuizContentState extends State<QuizContent>
                   Radio<String>(
                     value: level,
                     groupValue: selectedLevel,
-                    onChanged: (value) =>
-                        setState(() => selectedLevel = value!),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedLevel = value!;
+                        _updateSelectedModule();
+                      });
+                    },
                     activeColor: theme.colorScheme.primary,
                   ),
                   Text(
-                    level,
+                    displayName,
                     style: GoogleFonts.poppins(
                       fontWeight: isSelected
                           ? FontWeight.w600
@@ -771,6 +898,22 @@ class _QuizContentState extends State<QuizContent>
 
   Widget _buildThemeSelector() {
     final theme = Theme.of(context);
+    
+    // Générer les thèmes disponibles depuis les modules de l'API
+    final availableThemes = availableModules
+        .map((module) => module.title)
+        .toSet()
+        .toList()
+        ..sort();
+    
+    // Si aucun thème disponible, utiliser les thèmes par défaut
+    final themesToShow = availableThemes.isNotEmpty ? availableThemes : themes;
+    
+    // S'assurer que le thème sélectionné est dans la liste
+    if (!themesToShow.contains(selectedTheme) && themesToShow.isNotEmpty) {
+      selectedTheme = themesToShow.first;
+    }
+    
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -780,10 +923,15 @@ class _QuizContentState extends State<QuizContent>
         ),
       ),
       child: Column(
-        children: themes.map((themeItem) {
+        children: themesToShow.map((themeItem) {
           final isSelected = selectedTheme == themeItem;
           return InkWell(
-            onTap: () => setState(() => selectedTheme = themeItem),
+            onTap: () {
+              setState(() {
+                selectedTheme = themeItem;
+                _updateSelectedModule();
+              });
+            },
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -791,7 +939,7 @@ class _QuizContentState extends State<QuizContent>
                     ? theme.colorScheme.primary.withValues(alpha: 0.1)
                     : null,
                 border: Border(
-                  bottom: themeItem != themes.last
+                  bottom: themeItem != themesToShow.last
                       ? BorderSide(
                           color: theme.colorScheme.outline.withValues(
                             alpha: 0.3,
@@ -805,8 +953,12 @@ class _QuizContentState extends State<QuizContent>
                   Radio<String>(
                     value: themeItem,
                     groupValue: selectedTheme,
-                    onChanged: (value) =>
-                        setState(() => selectedTheme = value!),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedTheme = value!;
+                        _updateSelectedModule();
+                      });
+                    },
                     activeColor: theme.colorScheme.primary,
                   ),
                   Text(
@@ -1018,18 +1170,14 @@ class _QuizContentState extends State<QuizContent>
       };
     }
   }
+  
+  void _showError(String message) {
+    ErrorPopup.show(
+      context,
+      title: 'Erreur',
+      message: message,
+    );
+  }
 }
 
-class QuizQuestion {
-  final String question;
-  final List<String> options;
-  final String correctAnswer;
-  final String explanation;
 
-  QuizQuestion({
-    required this.question,
-    required this.options,
-    required this.correctAnswer,
-    required this.explanation,
-  });
-}

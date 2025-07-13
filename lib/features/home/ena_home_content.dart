@@ -64,7 +64,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
       final results = await Future.wait([
         AuthApiService.getUserInfo(token: token),
         AuthApiService.getUserNotifications(token: token),
-        ProgramEventsApiService.getProgramEvents(token: token),
+        ProgramEventsApiService.getRecentEventsForHome(token: token),
       ]);
 
       if (!mounted) return;
@@ -116,7 +116,8 @@ class _AccueilScreenState extends State<AccueilScreen> {
         // Événements du programme
         List<ProgramEvent> programEvents = [];
         if (eventsResult['success'] == true && eventsResult['data'] != null) {
-          programEvents = _parseProgramEvents(eventsResult['data']);
+          programEvents = eventsResult['data'] as List<ProgramEvent>;
+          print('✅ Program events loaded in cache: ${programEvents.length} events');
         }
 
         // 5️⃣ MISE À JOUR SYNCHRONE DE TOUTE L'INTERFACE
@@ -239,7 +240,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
     });
     
     try {
-      final result = await ProgramEventsApiService.getHomeEvents(token: token);
+      final result = await ProgramEventsApiService.getRecentEventsForHome(token: token);
       
       if (mounted) {
         if (result['success'] == true) {
@@ -247,7 +248,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
             _programEvents = result['data'] as List<ProgramEvent>;
             _isLoadingEvents = false;
           });
+          print('✅ Program events loaded for home: ${_programEvents.length} events');
         } else {
+          print('❌ Failed to load program events: ${result['error']}');
           setState(() {
             _programEvents = [];
             _isLoadingEvents = false;
@@ -255,6 +258,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
         }
       }
     } catch (e) {
+      print('❌ Exception loading program events: $e');
       if (mounted) {
         setState(() {
           _programEvents = [];
@@ -636,21 +640,6 @@ class _AccueilScreenState extends State<AccueilScreen> {
       return [];
     } catch (e) {
       print('⚠️ Error parsing notifications: $e');
-      return [];
-    }
-  }
-
-  /// Parse les événements du programme depuis les données API
-  List<ProgramEvent> _parseProgramEvents(dynamic data) {
-    try {
-      if (data is List) {
-        return data.map((item) => ProgramEvent.fromJson(item)).toList();
-      } else if (data is Map && data['results'] is List) {
-        return (data['results'] as List).map((item) => ProgramEvent.fromJson(item)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('⚠️ Error parsing program events: $e');
       return [];
     }
   }
@@ -1555,8 +1544,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: _programEvents.map((event) {
         return _buildEventItem(
-          event.name,
-          event.formattedPeriod,
+          event,
           isVeryNarrowScreen,
           isNarrowScreen,
         );
@@ -1564,30 +1552,88 @@ class _AccueilScreenState extends State<AccueilScreen> {
     );
   }
 
-  Widget _buildEventItem(String titre, String period, bool isVeryNarrowScreen, bool isNarrowScreen) {
+  Widget _buildEventItem(ProgramEvent event, bool isVeryNarrowScreen, bool isNarrowScreen) {
+    // Déterminer la couleur et l'icône selon le statut
+    Color statusColor;
+    IconData statusIcon;
+    
+    switch (event.status) {
+      case 'En cours':
+        statusColor = const Color(0xFF10B981); // Vert
+        statusIcon = Icons.play_circle_fill;
+        break;
+      case 'À venir':
+        statusColor = const Color(0xFF3B82F6); // Bleu
+        statusIcon = Icons.schedule;
+        break;
+      case 'Terminé':
+        statusColor = Colors.white54;
+        statusIcon = Icons.check_circle;
+        break;
+      default:
+        statusColor = Colors.white70;
+        statusIcon = Icons.circle;
+    }
+    
     return Padding(
       padding: EdgeInsets.only(
-        bottom: isVeryNarrowScreen ? 1 : 2, 
+        bottom: isVeryNarrowScreen ? 6 : 8, 
         left: isVeryNarrowScreen ? 2 : 4,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.circle, 
-            color: Colors.white70, 
-            size: isVeryNarrowScreen ? 5 : 7,
-          ),
-          SizedBox(width: isVeryNarrowScreen ? 5 : 7),
-          Expanded(
-            child: Text(
-              "$titre -> $period",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: isVeryNarrowScreen ? 10 : (isNarrowScreen ? 11 : 12),
+          Row(
+            children: [
+              Icon(
+                statusIcon, 
+                color: statusColor, 
+                size: isVeryNarrowScreen ? 12 : 14,
               ),
-              maxLines: isVeryNarrowScreen ? 2 : 1,
-              overflow: TextOverflow.ellipsis,
+              SizedBox(width: isVeryNarrowScreen ? 6 : 8),
+              Expanded(
+                child: Text(
+                  event.name,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: isVeryNarrowScreen ? 11 : (isNarrowScreen ? 12 : 13),
+                  ),
+                  maxLines: isVeryNarrowScreen ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isVeryNarrowScreen ? 4 : 6,
+                  vertical: isVeryNarrowScreen ? 1 : 2,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: statusColor, width: 0.5),
+                ),
+                child: Text(
+                  event.status,
+                  style: GoogleFonts.poppins(
+                    color: statusColor,
+                    fontWeight: FontWeight.w500,
+                    fontSize: isVeryNarrowScreen ? 7 : 8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isVeryNarrowScreen ? 2 : 3),
+          Padding(
+            padding: EdgeInsets.only(left: isVeryNarrowScreen ? 18 : 22),
+            child: Text(
+              "📅 ${event.formattedPeriod}",
+              style: GoogleFonts.poppins(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: isVeryNarrowScreen ? 9 : 10,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
         ],
