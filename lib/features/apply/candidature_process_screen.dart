@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/api_config.dart';
 import '../../services/auth_api_service.dart';
 import '../../services/pdf_generator_service.dart';
+import '../../services/image_cache_service.dart';
+import '../../services/profile_update_notification_service.dart';
 import '../../models/candidature_pdf_data.dart';
 
 class CandidatureProcessScreen extends StatefulWidget {
@@ -56,7 +58,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   double pourcentage = 60;
   String statutPro = "";
   String grade = "";
-  String indicatif = "";
+  String indicatif = "+243"; // Valeur par défaut pour la RDC
   String autreFiliere = "";
   String typePieceIdentite = "";
 
@@ -247,6 +249,37 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     administrationAttacheController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // ===================== VALIDATION DU TÉLÉPHONE =====================
+  
+  /// Valide le numéro de téléphone selon les critères:
+  /// - Exactement 9 chiffres
+  /// - Ne commence pas par 0
+  /// - Contient uniquement des chiffres
+  String? _validatePhoneNumber(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return "Numéro de téléphone requis";
+    }
+    
+    String cleanedValue = value.trim();
+    
+    // Vérifier que c'est uniquement des chiffres
+    if (!RegExp(r'^\d+$').hasMatch(cleanedValue)) {
+      return "Le téléphone ne doit contenir que des chiffres";
+    }
+    
+    // Vérifier que c'est exactement 9 chiffres
+    if (cleanedValue.length != 9) {
+      return "Le téléphone doit contenir exactement 9 chiffres";
+    }
+    
+    // Vérifier que ça ne commence pas par 0
+    if (cleanedValue.startsWith('0')) {
+      return "Le téléphone ne doit pas commencer par 0";
+    }
+    
+    return null;
   }
 
   // ===================== AUTO-SAUVEGARDE =====================
@@ -1533,11 +1566,14 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
                             flex: 6,
                             child: TextFormField(
                               controller: telephoneController,
-                              decoration: _inputDecoration("Téléphone"),
+                              decoration: _inputDecoration("Téléphone")
+                                  .copyWith(
+                                hintText: "Ex: 123456789 (9 chiffres, sans 0)",
+                                helperText: "Format: 9 chiffres sans le 0 initial",
+                              ),
                               keyboardType: TextInputType.phone,
-                              validator: (v) => (v == null || v.trim().isEmpty) 
-                                  ? "Numéro de téléphone requis" 
-                                  : null,
+                              maxLength: 9,
+                              validator: _validatePhoneNumber,
                             ),
                           ),
                         ],
@@ -2335,6 +2371,9 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
         // Supprimer les données sauvegardées après succès
         await _clearAutoSavedData();
         
+        // 🔄 MISE À JOUR DU CACHE UTILISATEUR AVEC LA NOUVELLE PHOTO
+        await _updateUserCacheWithPhoto(token);
+        
         // Générer automatiquement le PDF
         try {
           final pdfData = await _preparePdfData();
@@ -2364,6 +2403,41 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       _showErrorDialog("Une erreur technique s'est produite. Veuillez vérifier votre connexion et réessayer.");
     } finally {
       setState(() => loading = false);
+    }
+  }
+
+  /// Met à jour le cache utilisateur avec les nouvelles informations après soumission de candidature
+  Future<void> _updateUserCacheWithPhoto(String token) async {
+    try {
+      debugPrint('🔄 Mise à jour du cache utilisateur après candidature...');
+      
+      // Récupérer les informations utilisateur mises à jour depuis l'API
+      final result = await AuthApiService.getUserInfo(token: token);
+      
+      if (result['success'] == true && result['data'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+        
+        // Mettre à jour le cache local avec les nouvelles données
+        await prefs.setString('user_info_cache', jsonEncode(result['data']));
+        
+        // Invalider le cache d'images pour forcer le rechargement de la photo
+        ImageCacheService.invalidateUserImageCache();
+        
+        // Notifier les autres composants de la mise à jour
+        ProfileUpdateNotificationService().notifyProfileUpdated(
+          photoUpdated: true,
+          personalInfoUpdated: true,
+          contactInfoUpdated: false,
+          updatedData: result['data'],
+        );
+        
+        debugPrint('✅ Cache utilisateur mis à jour avec la nouvelle photo');
+      } else {
+        debugPrint('❌ Échec de la récupération des informations utilisateur mises à jour');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la mise à jour du cache utilisateur: $e');
+      // Ne pas faire échouer la candidature pour cette erreur
     }
   }
 

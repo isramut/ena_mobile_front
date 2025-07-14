@@ -55,62 +55,62 @@ void main() {
 
       // CAS 1: Utilisateur n'a pas encore postulé
       print('📋 CAS 1: has_applied = false');
-      final cas1_progress = getProgressValue(false, null);
-      final cas1_text = getActionText(false, null);
-      expect(cas1_progress, 0.0);
-      expect(cas1_text, 'Soumettre ma candidature');
-      print('   → Progression: ${(cas1_progress * 100).toInt()}%');
-      print('   → Texte: $cas1_text');
+      final cas1Progress = getProgressValue(false, null);
+      final cas1Text = getActionText(false, null);
+      expect(cas1Progress, 0.0);
+      expect(cas1Text, 'Soumettre ma candidature');
+      print('   → Progression: ${(cas1Progress * 100).toInt()}%');
+      print('   → Texte: $cas1Text');
       print('   ✅ CORRECT\n');
 
       // CAS 2: Utilisateur a postulé, statut = envoye
       print('📋 CAS 2: has_applied = true, statut = envoye');
-      final cas2_progress = getProgressValue(true, 'envoye');
-      final cas2_text = getActionText(true, 'envoye');
-      expect(cas2_progress, 0.2);
-      expect(cas2_text, 'Candidature envoyée');
-      print('   → Progression: ${(cas2_progress * 100).toInt()}%');
-      print('   → Texte: $cas2_text');
+      final cas2Progress = getProgressValue(true, 'envoye');
+      final cas2Text = getActionText(true, 'envoye');
+      expect(cas2Progress, 0.2);
+      expect(cas2Text, 'Candidature envoyée');
+      print('   → Progression: ${(cas2Progress * 100).toInt()}%');
+      print('   → Texte: $cas2Text');
       print('   ✅ CORRECT\n');
 
       // CAS 3: Utilisateur a postulé, statut = en_traitement
       print('📋 CAS 3: has_applied = true, statut = en_traitement');
-      final cas3_progress = getProgressValue(true, 'en_traitement');
-      final cas3_text = getActionText(true, 'en_traitement');
-      expect(cas3_progress, 0.7);
-      expect(cas3_text, 'En cours de traitement');
-      print('   → Progression: ${(cas3_progress * 100).toInt()}%');
-      print('   → Texte: $cas3_text');
+      final cas3Progress = getProgressValue(true, 'en_traitement');
+      final cas3Text = getActionText(true, 'en_traitement');
+      expect(cas3Progress, 0.7);
+      expect(cas3Text, 'En cours de traitement');
+      print('   → Progression: ${(cas3Progress * 100).toInt()}%');
+      print('   → Texte: $cas3Text');
       print('   ✅ CORRECT\n');
 
       // CAS 4: Utilisateur a postulé, statut = valide
       print('📋 CAS 4: has_applied = true, statut = valide');
-      final cas4_progress = getProgressValue(true, 'valide');
-      final cas4_text = getActionText(true, 'valide');
-      expect(cas4_progress, 1.0);
-      expect(cas4_text, 'Candidature acceptée');
-      print('   → Progression: ${(cas4_progress * 100).toInt()}%');
-      print('   → Texte: $cas4_text');
+      final cas4Progress = getProgressValue(true, 'valide');
+      final cas4Text = getActionText(true, 'valide');
+      expect(cas4Progress, 1.0);
+      expect(cas4Text, 'Candidature acceptée');
+      print('   → Progression: ${(cas4Progress * 100).toInt()}%');
+      print('   → Texte: $cas4Text');
       print('   ✅ CORRECT\n');
 
       // CAS 5: Utilisateur a postulé, statut = rejete
       print('📋 CAS 5: has_applied = true, statut = rejete');
-      final cas5_progress = getProgressValue(true, 'rejete');
-      final cas5_text = getActionText(true, 'rejete');
-      expect(cas5_progress, 1.0);
-      expect(cas5_text, 'Candidature rejetée');
-      print('   → Progression: ${(cas5_progress * 100).toInt()}%');
-      print('   → Texte: $cas5_text');
+      final cas5Progress = getProgressValue(true, 'rejete');
+      final cas5Text = getActionText(true, 'rejete');
+      expect(cas5Progress, 1.0);
+      expect(cas5Text, 'Candidature rejetée');
+      print('   → Progression: ${(cas5Progress * 100).toInt()}%');
+      print('   → Texte: $cas5Text');
       print('   ✅ CORRECT\n');
 
       // CAS 6: PROBLÈME ACTUEL - has_applied = true MAIS erreur API
       print('⚠️ CAS 6: has_applied = true MAIS candidatureInfo = null (PROBLÈME ACTUEL)');
-      final cas6_progress = getProgressValue(true, null);
-      final cas6_text = getActionText(true, null);
-      expect(cas6_progress, 0.0);
-      expect(cas6_text, 'Erreur de chargement des détails');
-      print('   → Progression: ${(cas6_progress * 100).toInt()}% (PROBLÈME: utilisateur voit 0% au lieu d\'une progression)');
-      print('   → Texte: $cas6_text');
+      final cas6Progress = getProgressValue(true, null);
+      final cas6Text = getActionText(true, null);
+      expect(cas6Progress, 0.0);
+      expect(cas6Text, 'Erreur de chargement des détails');
+      print('   → Progression: ${(cas6Progress * 100).toInt()}% (PROBLÈME: utilisateur voit 0% au lieu d\'une progression)');
+      print('   → Texte: $cas6Text');
       print('   ❌ C\'EST LE PROBLÈME ACTUEL avec isramut7@gmail.com !');
       print('       L\'utilisateur a has_applied = true, mais l\'API candidature échoue');
       print('       Donc la progression reste à 0% au lieu d\'afficher au moins 20%\n');

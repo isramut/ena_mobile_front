@@ -97,7 +97,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
 
     if (clientValidationErrors.isNotEmpty) {
       setState(() {
-        this.validationErrors = RecoursValidationError(errors: {
+        validationErrors = RecoursValidationError(errors: {
           for (var entry in clientValidationErrors.entries)
             entry.key: [entry.value!]
         });

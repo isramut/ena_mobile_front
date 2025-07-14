@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ena_mobile_front/main.dart';
-import 'package:ena_mobile_front/features/auth/login_screen.dart';
 import 'package:ena_mobile_front/features/parametres/parametre_screen.dart';
 
 void main() {

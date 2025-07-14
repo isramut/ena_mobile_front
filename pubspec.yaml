@@ -44,8 +44,25 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
   assets:
       - assets/images/
+      - assets/icon/
+
+# Configuration de l'icône adaptative MyENA
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  
+  # Icône adaptative pour Android (s'adapte aux couleurs système)
+  adaptive_icon_background: "#3678FF"  # Bleu ENA qui s'adaptera aux palettes
+  adaptive_icon_foreground: "assets/icon/MyENA.png"  # Votre logo
+  
+  # Icône standard pour iOS et fallback Android
+  image_path: "assets/icon/MyENA.png"
+  
+  # Configuration avancée
+  min_sdk_android: 21

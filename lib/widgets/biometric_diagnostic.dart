@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/biometric_service.dart';
 
 /// Widget de test pour diagnostiquer la détection biométrique sur différents appareils

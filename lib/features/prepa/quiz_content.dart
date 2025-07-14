@@ -263,6 +263,9 @@ class _QuizContentState extends State<QuizContent>
 
   Widget _buildSetupScreen() {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    final horizontalPadding = isSmallScreen ? 16.0 : 20.0;
     
     // Affichage du chargement
     if (isLoadingData) {
@@ -288,7 +291,7 @@ class _QuizContentState extends State<QuizContent>
     if (hasError) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(horizontalPadding),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -331,7 +334,7 @@ class _QuizContentState extends State<QuizContent>
     }
     
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(horizontalPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -361,6 +364,7 @@ class _QuizContentState extends State<QuizContent>
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onPrimary,
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -370,6 +374,8 @@ class _QuizContentState extends State<QuizContent>
                     color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -438,7 +444,7 @@ class _QuizContentState extends State<QuizContent>
           const SizedBox(height: 32),
 
           // Bouton de démarrage
-          Container(
+          SizedBox(
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
@@ -457,6 +463,8 @@ class _QuizContentState extends State<QuizContent>
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -490,13 +498,18 @@ class _QuizContentState extends State<QuizContent>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Question ${currentQuestionIndex + 1}/${questions.length}',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.primary,
+                  Expanded(
+                    child: Text(
+                      'Question ${currentQuestionIndex + 1}/${questions.length}',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -553,7 +566,7 @@ class _QuizContentState extends State<QuizContent>
                       ),
                     ],
                   ),
-                  child: Text(
+                  child:                  Text(
                     question.question,
                     style: GoogleFonts.poppins(
                       fontSize: 18,
@@ -561,6 +574,8 @@ class _QuizContentState extends State<QuizContent>
                       color: theme.colorScheme.onSurface,
                       height: 1.4,
                     ),
+                    maxLines: null, // Permet plusieurs lignes
+                    overflow: TextOverflow.visible,
                   ),
                 ),
 
@@ -607,6 +622,8 @@ class _QuizContentState extends State<QuizContent>
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF1E3A8A),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -624,9 +641,12 @@ class _QuizContentState extends State<QuizContent>
     final percentage = (score / questions.length * 100).round();
     final resultData = _getResultData(percentage);
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    final horizontalPadding = isSmallScreen ? 16.0 : 20.0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(horizontalPadding),
       child: Column(
         children: [
           const SizedBox(height: 40),
@@ -658,6 +678,8 @@ class _QuizContentState extends State<QuizContent>
                     color: Colors.white,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -667,6 +689,8 @@ class _QuizContentState extends State<QuizContent>
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -676,6 +700,8 @@ class _QuizContentState extends State<QuizContent>
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -707,6 +733,8 @@ class _QuizContentState extends State<QuizContent>
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF1E3A8A),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
                 _buildStatRow(
@@ -724,10 +752,10 @@ class _QuizContentState extends State<QuizContent>
                   '$percentage%',
                   const Color(0xFF3B82F6),
                 ),
-                _buildStatRow('Niveau', selectedLevel, const Color(0xFF8B5CF6)),
+                _buildStatRow('Niveau', _getDisplayLevel(selectedLevel), const Color(0xFF8B5CF6)),
                 _buildStatRow(
                   'Thématique',
-                  selectedTheme,
+                  _getTruncatedTheme(selectedTheme),
                   const Color(0xFFF59E0B),
                 ),
               ],
@@ -739,7 +767,7 @@ class _QuizContentState extends State<QuizContent>
           // Boutons d'action
           Column(
             children: [
-              Container(
+              SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
@@ -757,11 +785,15 @@ class _QuizContentState extends State<QuizContent>
                     children: [
                       const Icon(Icons.refresh),
                       const SizedBox(width: 8),
-                      Text(
-                        'Recommencer',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Text(
+                          'Recommencer',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -769,7 +801,7 @@ class _QuizContentState extends State<QuizContent>
                 ),
               ),
               const SizedBox(height: 16),
-              Container(
+              SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: OutlinedButton(
@@ -785,12 +817,16 @@ class _QuizContentState extends State<QuizContent>
                     children: [
                       const Icon(Icons.arrow_back, color: Color(0xFF1E3A8A)),
                       const SizedBox(width: 8),
-                      Text(
-                        'Retour à la Préparation',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1E3A8A),
+                      Flexible(
+                        child: Text(
+                          'Retour à la Préparation',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E3A8A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -814,12 +850,16 @@ class _QuizContentState extends State<QuizContent>
       children: [
         Icon(icon, color: theme.colorScheme.primary, size: 20),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.primary,
+        Expanded(
+          child: Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.primary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -876,15 +916,19 @@ class _QuizContentState extends State<QuizContent>
                     },
                     activeColor: theme.colorScheme.primary,
                   ),
-                  Text(
-                    displayName,
-                    style: GoogleFonts.poppins(
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                      color: isSelected
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface,
+                  Expanded(
+                    child: Text(
+                      displayName,
+                      style: GoogleFonts.poppins(
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -961,15 +1005,19 @@ class _QuizContentState extends State<QuizContent>
                     },
                     activeColor: theme.colorScheme.primary,
                   ),
-                  Text(
-                    themeItem,
-                    style: GoogleFonts.poppins(
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                      color: isSelected
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface,
+                  Expanded(
+                    child: Text(
+                      themeItem,
+                      style: GoogleFonts.poppins(
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -1024,14 +1072,19 @@ class _QuizContentState extends State<QuizContent>
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(emoji, style: const TextStyle(fontSize: 16)),
           const SizedBox(width: 12),
-          Text(
-            text,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: const Color(0xFF065F46),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFF065F46),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -1091,9 +1144,10 @@ class _QuizContentState extends State<QuizContent>
                   fontWeight: FontWeight.w500,
                   color: textColor,
                 ),
+                maxLines: null, // Permet plusieurs lignes
+                overflow: TextOverflow.visible,
               ),
             ),
-            // Plus d'icône pour éviter toute confusion - pas de feedback immédiat
           ],
         ),
       ),
@@ -1106,25 +1160,37 @@ class _QuizContentState extends State<QuizContent>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: const Color(0xFF64748B),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
+          Expanded(
+            flex: 3,
             child: Text(
-              value,
+              label,
               style: GoogleFonts.poppins(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: color,
+                color: const Color(0xFF64748B),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -1177,6 +1243,28 @@ class _QuizContentState extends State<QuizContent>
       title: 'Erreur',
       message: message,
     );
+  }
+
+  /// Méthodes utilitaires pour la responsivité
+
+  /// Affiche le niveau de manière lisible
+  String _getDisplayLevel(String level) {
+    switch (level) {
+      case 'debutant':
+        return 'Débutant';
+      case 'moyen':
+        return 'Moyen';
+      case 'avance':
+        return 'Avancé';
+      default:
+        return level;
+    }
+  }
+
+  /// Tronque le nom du thème s'il est trop long
+  String _getTruncatedTheme(String theme) {
+    if (theme.length <= 20) return theme;
+    return '${theme.substring(0, 17)}...';
   }
 }
 

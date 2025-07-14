@@ -183,9 +183,9 @@ class RecoursValidationError {
 
   List<String> get allErrors {
     List<String> allErrors = [];
-    errors.values.forEach((fieldErrors) {
+    for (var fieldErrors in errors.values) {
       allErrors.addAll(fieldErrors);
-    });
+    }
     return allErrors;
   }
 
