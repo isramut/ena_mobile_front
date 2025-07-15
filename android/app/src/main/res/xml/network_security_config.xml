@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Configuration pour permettre les connexions HTTP et HTTPS -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Autoriser les connexions vers le serveur ENA -->
+        <domain includeSubdomains="true">ena.gouv.cd</domain>
+        <!-- Autoriser les connexions vers localhost pour le développement -->
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+    
+    <!-- Configuration de base pour permettre le trafic cleartext -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- Faire confiance aux certificats système -->
+            <certificates src="system"/>
+            <!-- Faire confiance aux certificats utilisateur -->
+            <certificates src="user"/>
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Configuration de débogage pour les connexions de développement -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

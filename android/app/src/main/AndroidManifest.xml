@@ -1,15 +1,69 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ===================== PERMISSIONS RÉSEAU ===================== -->
+    <!-- Permission pour accéder à Internet - OBLIGATOIRE pour les API -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Permission pour vérifier l'état de la connexion réseau -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Permission pour accéder aux informations WiFi -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    
+    <!-- ===================== PERMISSIONS STOCKAGE ===================== -->
+    <!-- Permission pour lire le stockage externe (documents, images) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- Permission pour écrire sur le stockage externe -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    <!-- Pour Android 11+ (API 30+) - Accès complet au stockage -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    
+    <!-- Pour Android 13+ (API 33+) - Permissions granulaires pour les médias -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    
+    <!-- ===================== PERMISSIONS CAMÉRA ET MULTIMÉDIA ===================== -->
+    <!-- Permission pour utiliser la caméra (photos de profil) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Permission pour enregistrer des fichiers audio/vidéo -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    
+    <!-- ===================== PERMISSIONS BIOMÉTRIQUES ===================== -->
     <!-- Permissions pour l'authentification biométrique -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
     
-    <!-- Permissions supplémentaires pour la sécurité -->
-    <uses-permission android:name="android.permission.CAMERA" android:required="false" />
+    <!-- ===================== PERMISSIONS FICHIERS ET DOCUMENTS ===================== -->
+    <!-- Permission pour gérer les documents -->
+    <uses-permission android:name="android.permission.MANAGE_DOCUMENTS" />
+    
+    <!-- ===================== PERMISSIONS SYSTÈME ===================== -->
+    <!-- Permission pour empêcher la mise en veille pendant les téléchargements -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Permission pour les vibrations (feedback utilisateur) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    
+    <!-- ===================== DÉCLARATIONS DE FONCTIONNALITÉS ===================== -->
+    <!-- Déclarer que l'app utilise la caméra mais qu'elle n'est pas obligatoire -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+    
+    <!-- Déclarer l'utilisation du stockage externe -->
+    <uses-feature
+        android:name="android.software.file_manager"
+        android:required="false" />
     
     <application
         android:label="MyENA"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
+        android:preserveLegacyExternalStorage="true"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"
