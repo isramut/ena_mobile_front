@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -80,8 +81,8 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     "Haut-Uele",
     "Ituri",
     "Kasaï",
-    "Kasaï Central",
-    "Kasaï Oriental",
+    "Kasaï-Central",
+    "Kasaï-Oriental",
     "Kinshasa",
     "Kwango",
     "Kwilu",
@@ -224,6 +225,8 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     super.initState();
     _loadAutoSavedData();
     _startAutoSave();
+    // Validation supplémentaire pour éviter les erreurs de dropdown
+    _validateAndFixDropdownValues();
   }
 
   @override
@@ -385,8 +388,26 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
           administrationAttacheController.text = savedData['administrationAttache'] ?? '';
           genre = savedData['genre'] ?? '';
           nationalite = savedData['nationalite'] ?? '';
-          provinceOrigine = savedData['provinceOrigine'] ?? '';
-          provinceResidence = savedData['provinceResidence'] ?? '';
+          
+          // Migration des anciennes valeurs des provinces
+          String savedProvinceOrigine = savedData['provinceOrigine'] ?? '';
+          String savedProvinceResidence = savedData['provinceResidence'] ?? '';
+          
+          // Corriger les anciennes valeurs sans trait d'union
+          if (savedProvinceOrigine == "Kasaï Oriental") {
+            savedProvinceOrigine = "Kasaï-Oriental";
+          } else if (savedProvinceOrigine == "Kasaï Central") {
+            savedProvinceOrigine = "Kasaï-Central";
+          }
+          
+          if (savedProvinceResidence == "Kasaï Oriental") {
+            savedProvinceResidence = "Kasaï-Oriental";
+          } else if (savedProvinceResidence == "Kasaï Central") {
+            savedProvinceResidence = "Kasaï-Central";
+          }
+          
+          provinceOrigine = savedProvinceOrigine;
+          provinceResidence = savedProvinceResidence;
           etatCivil = savedData['etatCivil'] ?? '';
           diplome = savedData['diplome'] ?? '';
           filiere = savedData['filiere'] ?? '';
@@ -449,6 +470,80 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       debugPrint('✅ Données supprimées');
     } catch (e) {
       debugPrint('❌ Erreur suppression: $e');
+    }
+  }
+
+  /// Valide et corrige les valeurs des dropdowns pour éviter les erreurs
+  void _validateAndFixDropdownValues() {
+    // Valider et corriger provinceOrigine
+    if (provinceOrigine.isNotEmpty && !provinces.contains(provinceOrigine)) {
+      debugPrint('⚠️ Province origine invalide détectée: $provinceOrigine');
+      if (provinceOrigine == "Kasaï Oriental") {
+        provinceOrigine = "Kasaï-Oriental";
+      } else if (provinceOrigine == "Kasaï Central") {
+        provinceOrigine = "Kasaï-Central";
+      } else {
+        provinceOrigine = ""; // Reset si non trouvé
+      }
+      debugPrint('✅ Province origine corrigée: $provinceOrigine');
+    }
+
+    // Valider et corriger provinceResidence
+    if (provinceResidence.isNotEmpty && !provinces.contains(provinceResidence)) {
+      debugPrint('⚠️ Province résidence invalide détectée: $provinceResidence');
+      if (provinceResidence == "Kasaï Oriental") {
+        provinceResidence = "Kasaï-Oriental";
+      } else if (provinceResidence == "Kasaï Central") {
+        provinceResidence = "Kasaï-Central";
+      } else {
+        provinceResidence = ""; // Reset si non trouvé
+      }
+      debugPrint('✅ Province résidence corrigée: $provinceResidence');
+    }
+
+    // Valider les autres dropdown values
+    final validGenres = ["Masculin", "Féminin"];
+    if (genre.isNotEmpty && !validGenres.contains(genre)) {
+      debugPrint('⚠️ Genre invalide détecté: $genre - Reset');
+      genre = "";
+    }
+
+    final validNationalites = ["Congolaise", "Autre"];
+    if (nationalite.isNotEmpty && !validNationalites.contains(nationalite)) {
+      debugPrint('⚠️ Nationalité invalide détectée: $nationalite - Reset');
+      nationalite = "";
+    }
+
+    final validEtatsCivils = ["Célibataire", "Marié", "Divorcé", "Veuf (ve)"];
+    if (etatCivil.isNotEmpty && !validEtatsCivils.contains(etatCivil)) {
+      debugPrint('⚠️ État civil invalide détecté: $etatCivil - Reset');
+      etatCivil = "";
+    }
+
+    if (diplome.isNotEmpty && !diplomes.contains(diplome)) {
+      debugPrint('⚠️ Diplôme invalide détecté: $diplome - Reset');
+      diplome = "";
+    }
+
+    if (filiere.isNotEmpty && !filieres.contains(filiere)) {
+      debugPrint('⚠️ Filière invalide détectée: $filiere - Reset');
+      filiere = "";
+    }
+
+    final validStatuts = ["Fonctionnaire", "Employé privé", "Sans emploi"];
+    if (statutPro.isNotEmpty && !validStatuts.contains(statutPro)) {
+      debugPrint('⚠️ Statut professionnel invalide détecté: $statutPro - Reset');
+      statutPro = "";
+    }
+
+    if (grade.isNotEmpty && !grades.contains(grade)) {
+      debugPrint('⚠️ Grade invalide détecté: $grade - Reset');
+      grade = "";
+    }
+
+    if (indicatif.isNotEmpty && !indicatifs.contains(indicatif)) {
+      debugPrint('⚠️ Indicatif invalide détecté: $indicatif - Reset');
+      indicatif = "+243"; // Valeur par défaut
     }
   }
 
@@ -1984,7 +2079,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
                       ligne("Adresse complète", adresseController.text),
                       ligne(
                         "Téléphone",
-                        "$indicatif ${telephoneController.text}",
+                        "$indicatif${telephoneController.text}",
                       ),
                       ligne("Diplôme", diplome),
                       ligne("Année d'obtention", anneeObtentionController.text),
@@ -2103,7 +2198,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
             Text(
               "Erreur",
               style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
+                               fontWeight: FontWeight.bold,
                 fontSize: 19,
                 color: const Color(0xFFE74C3C),
               ),
@@ -2388,6 +2483,14 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       } else {
         final errorData = postRespBody.isNotEmpty ? postRespBody : "Erreur lors de la soumission de la candidature";
         
+        // 🔍 DIAGNOSTIC DÉTAILLÉ DE L'ERREUR
+        debugPrint('❌ ERREUR SOUMISSION CANDIDATURE:');
+        debugPrint('📊 Status Code: ${postResponse.statusCode}');
+        debugPrint('📋 Response Body: $postRespBody');
+        debugPrint('🔗 Request URL: ${postRequest.url}');
+        debugPrint('📤 Request Fields: ${postRequest.fields}');
+        debugPrint('📎 Request Files: ${postRequest.files.map((f) => f.field).join(', ')}');
+        
         // Vérifier si c'est une erreur de candidature en double
         if (errorData.toLowerCase().contains("unique") || 
             errorData.toLowerCase().contains("duplicate") || 
@@ -2396,11 +2499,51 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
             postResponse.statusCode == 409) {
           _showErrorDialog("Vous avez déjà soumis une candidature. Une seule candidature par personne est autorisée.");
         } else {
-          _showErrorDialog("Une erreur s'est produite lors de l'envoi de votre candidature. Veuillez réessayer plus tard.");
+          // Afficher l'erreur détaillée en mode debug
+          String errorMessage = "Une erreur s'est produite lors de l'envoi de votre candidature.";
+          
+          if (postResponse.statusCode == 400) {
+            errorMessage = "Données invalides. Veuillez vérifier tous les champs requis.";
+          } else if (postResponse.statusCode == 401) {
+            errorMessage = "Session expirée. Veuillez vous reconnecter.";
+          } else if (postResponse.statusCode == 413) {
+            errorMessage = "Un ou plusieurs fichiers sont trop volumineux.";
+          } else if (postResponse.statusCode == 422) {
+            errorMessage = "Format de données incorrect. Vérifiez vos informations.";
+          } else if (postResponse.statusCode >= 500) {
+            errorMessage = "Erreur serveur. Veuillez réessayer plus tard.";
+          }
+          
+          // En mode debug, afficher plus de détails
+          if (kDebugMode && postRespBody.isNotEmpty) {
+            errorMessage += "\n\nDétails techniques:\nCode: ${postResponse.statusCode}\nRéponse: $postRespBody";
+          }
+          
+          _showErrorDialog(errorMessage);
         }
       }
     } catch (e) {
-      _showErrorDialog("Une erreur technique s'est produite. Veuillez vérifier votre connexion et réessayer.");
+      // 🔍 DIAGNOSTIC DÉTAILLÉ DE L'EXCEPTION
+      debugPrint('💥 EXCEPTION LORS DE LA SOUMISSION:');
+      debugPrint('🔥 Type: ${e.runtimeType}');
+      debugPrint('📝 Message: $e');
+      debugPrint('📍 StackTrace: ${StackTrace.current}');
+      
+      String errorMessage = "Une erreur technique s'est produite.";
+      
+      if (e.toString().contains('SocketException') || e.toString().contains('NetworkException')) {
+        errorMessage = "Problème de connexion réseau. Vérifiez votre connexion internet.";
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = "Délai d'attente dépassé. Veuillez réessayer.";
+      } else if (e.toString().contains('FormatException')) {
+        errorMessage = "Erreur de format des données. Vérifiez vos informations.";
+      }
+      
+      if (kDebugMode) {
+        errorMessage += "\n\nErreur technique: $e";
+      }
+      
+      _showErrorDialog(errorMessage);
     } finally {
       setState(() => loading = false);
     }
