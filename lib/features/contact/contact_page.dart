@@ -20,7 +20,7 @@ class _ContactPageState extends State<ContactPage> {
   void _launchEmail() async {
     final url = Uri(
       scheme: 'mailto',
-      path: 'contact@ena.cd',
+      path: 'info@ena.cd',
       query: 'subject=Demande%20d\'information%20ENA',
     );
     if (!await launchUrl(url)) {
@@ -33,7 +33,7 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   void _launchPhone() async {
-    final url = Uri.parse('tel:+243812345678');
+    final url = Uri.parse('tel:+243832222920');
     if (!await launchUrl(url)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Impossible de lancer l'appel.")),

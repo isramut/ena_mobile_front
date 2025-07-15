@@ -89,7 +89,7 @@ class PrepaEnaContent extends StatelessWidget {
               children: [
                 _buildInfoCard(
                   'Épreuves du concours',
-                  'Le concours d\'entrée à l\'ENA comprend plusieurs épreuves écrites et orales couvrant différents domaines.',
+                  'Le concours d\'entrée à l\'ENA comprend une épreuve écrite de dissertation (4h) et une épreuve orale (20 min maximum).',
                   Icons.description,
                   context,
                   isSmallScreen: isSmallScreen,
@@ -831,11 +831,7 @@ class PrepaEnaContent extends StatelessWidget {
         _buildSectionItem(
           'Épreuves écrites',
           [
-            'Culture générale et actualité (3h)',
-            'Droit public et institutions (3h)',
-            'Économie et gestion publique (3h)',
-            'Sciences politiques (2h)',
-            'Histoire de la RDC (2h)',
+            'Cette épreuve contient un sujet de dissertation que les candidats doivent développer pendant 4 heures. Elle est organisée en même temps dans chaque chef-lieu de province de la République Démocratique du Congo.',
           ],
           Icons.edit,
           const Color(0xFF3B82F6),
@@ -843,12 +839,14 @@ class PrepaEnaContent extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _buildSectionItem(
-          'Épreuves orales',
+          'Épreuve orale',
           [
-            'Entretien avec le jury (30 min)',
-            'Présentation d\'un dossier (20 min)',
-            'Questions de culture générale (15 min)',
-            'Test de langue française (15 min)',
+            'Considérée comme une interview, la durée maximum de cette épreuve est de 20 minutes. Les critères d\'évaluation sont les suivants :',
+            '• Présentation et motivation',
+            '• Formation et compétence',
+            '• Test de personnalité',
+            '• Ethique, déontologie et bonne gouvernance dans l\'administration publique',
+            '• Test d\'opinion et culture générale.',
           ],
           Icons.mic,
           const Color(0xFF3B82F6),
@@ -856,7 +854,7 @@ class PrepaEnaContent extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _buildInfoBox(
-          'Durée totale : 3 jours d\'épreuves écrites + 2 jours d\'entretiens oraux',
+          'Durée totale : 4 heures d\'épreuve écrite + 20 minutes d\'entretien oral',
           Icons.schedule,
           const Color(0xFF3B82F6),
           context,
@@ -871,11 +869,11 @@ class PrepaEnaContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildConditionCard('Nationalité', 'Être de nationalité congolaise (RDC)', Icons.flag, context),
-        _buildConditionCard('Âge', 'Avoir entre 21 et 35 ans au 31 décembre', Icons.cake, context),
+        _buildConditionCard('Âge', 'Avoir entre 18 ans minimum et 35 ans maximum à la date du début de la scolarité', Icons.cake, context),
         _buildConditionCard('Diplôme', 'Licence universitaire ou équivalent', Icons.school, context),
-        _buildConditionCard('Santé', 'Certificat médical d\'aptitude physique', Icons.health_and_safety, context),
-        _buildConditionCard('Casier judiciaire', 'Extrait de casier judiciaire vierge', Icons.gavel, context),
-        _buildConditionCard('Engagement', 'Servir l\'État pendant au moins 10 ans', Icons.handshake, context),
+        _buildConditionCard('Santé', 'Certificat médical d\'aptitude physique établi dans un hôpital public', Icons.health_and_safety, context),
+        _buildConditionCard('Relevé des notes', 'Relevé des notes de la dernière année', Icons.grade, context),
+        _buildConditionCard('Engagement', 'Servir l\'État pendant au moins 7 ans', Icons.handshake, context),
         const SizedBox(height: 16),
         _buildInfoBox(
           'Tous les documents doivent être authentifiés et en cours de validité',
@@ -896,7 +894,7 @@ class PrepaEnaContent extends StatelessWidget {
         _buildCalendrierCard('Clôture', 'Mars', 'Date limite de candidature', Icons.close, context),
         _buildCalendrierCard('Épreuves écrites', 'Avril - Mai', 'Examens dans les centres', Icons.edit, context),
         _buildCalendrierCard('Résultats écrits', 'Juin', 'Liste des admissibles', Icons.article, context),
-        _buildCalendrierCard('Épreuves orales', 'Juillet', 'Entretiens avec le jury', Icons.mic, context),
+        _buildCalendrierCard('Épreuve orale', 'Juillet', 'Entretiens avec le jury', Icons.mic, context),
         _buildCalendrierCard('Résultats finaux', 'Août', 'Liste définitive des admis', Icons.emoji_events, context),
         _buildCalendrierCard('Rentrée', 'Septembre', 'Début de la formation', Icons.school, context),
         const SizedBox(height: 16),

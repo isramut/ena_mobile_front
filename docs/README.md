@@ -8,15 +8,8 @@ Ce dossier contient toute la documentation technique du projet ENA Mobile Fronte
 - [`AUTHENTIFICATION_BIOMETRIQUE_DOCUMENTATION.md`](AUTHENTIFICATION_BIOMETRIQUE_DOCUMENTATION.md) - Documentation complète de l'authentification biométrique
 - [`BIOMETRIE_LIEE_UTILISATEUR_DOCUMENTATION.md`](BIOMETRIE_LIEE_UTILISATEUR_DOCUMENTATION.md) - Liaison biométrie-utilisateur
 - [`IMPLEMENTATION_COMPLETE_BIOMETRIQUE.md`](IMPLEMENTATION_COMPLETE_BIOMETRIQUE.md) - Implémentation complète
-- [`PERSISTANCE_BIOMETRIQUE_TESTS.md`](PERSISTANCE_BIOMETRIQUE_TESTS.md) - Tests de persistance
-- [`CHECKLIST_TESTS_BIOMETRIQUE.md`](CHECKLIST_TESTS_BIOMETRIQUE.md) - Checklist de validation
-
-### 🔧 Corrections et Améliorations
-- [`CORRECTION_BIOMETRIE_APRES_LOGOUT.md`](CORRECTION_BIOMETRIE_APRES_LOGOUT.md) - Correction du logout biométrique
-- [`CORRECTION_CHARGEMENT_BIOMETRIQUE.md`](CORRECTION_CHARGEMENT_BIOMETRIQUE.md) - Correction du flux de chargement
-- [`CORRECTION_ENDPOINT_PROFIL_CANDIDAT.md`](CORRECTION_ENDPOINT_PROFIL_CANDIDAT.md) - Correction des endpoints profil
-- [`CORRECTION_PHOTO_PROFIL.md`](CORRECTION_PHOTO_PROFIL.md) - Correction photo de profil (obsolète)
 - [`RECONNEXION_BIOMETRIQUE_PERSISTANTE.md`](RECONNEXION_BIOMETRIQUE_PERSISTANTE.md) - Reconnexion automatique
+- [`RECAP_FINAL_BIOMETRIQUE.md`](RECAP_FINAL_BIOMETRIQUE.md) - Récapitulatif final biométrique
 
 ### 🤖 Chatbot ENA Mwinda
 - [`AMELIORATIONS_LLM_ENA_MWINDA.md`](AMELIORATIONS_LLM_ENA_MWINDA.md) - Améliorations du chatbot
@@ -34,15 +27,18 @@ Ce dossier contient toute la documentation technique du projet ENA Mobile Fronte
 - [`GENERATION_PDF_DOCUMENTATION.md`](GENERATION_PDF_DOCUMENTATION.md) - Génération PDF
 - [`AJOUT_NUMERO_CANDIDAT.md`](AJOUT_NUMERO_CANDIDAT.md) - Numérotation candidats
 - [`VALIDATION_FORMULAIRE_CANDIDATURE.md`](VALIDATION_FORMULAIRE_CANDIDATURE.md) - Validation formulaires
+- [`FORMAT_TELEPHONE_CANDIDATURE.md`](FORMAT_TELEPHONE_CANDIDATURE.md) - Format téléphone
+- [`REFACTORING_MOT_DE_PASSE_OUBLIE_FINAL.md`](REFACTORING_MOT_DE_PASSE_OUBLIE_FINAL.md) - Refactoring mot de passe oublié
 
 ### 🔄 Interface Utilisateur
 - [`AUTOSAVE_DOCUMENTATION.md`](AUTOSAVE_DOCUMENTATION.md) - Sauvegarde automatique
 - [`BOUTON_QUITTER_FORMULAIRE.md`](BOUTON_QUITTER_FORMULAIRE.md) - Bouton quitter
 - [`VALIDATION_CHAMPS_TEXTE.md`](VALIDATION_CHAMPS_TEXTE.md) - Validation champs
 
-### 📋 Planification et Récapitulatifs
+### 📋 Planification et Implémentation
 - [`PROGRAMME_CALENDRIER_IMPLEMENTATION.md`](PROGRAMME_CALENDRIER_IMPLEMENTATION.md) - Planning d'implémentation
-- [`RECAP_FINAL_BIOMETRIQUE.md`](RECAP_FINAL_BIOMETRIQUE.md) - Récapitulatif final biométrique
+- [`INTEGRATION_API_QUIZ_DOCUMENTATION.md`](INTEGRATION_API_QUIZ_DOCUMENTATION.md) - Intégration API Quiz
+- [`ANDROID_11_COMPATIBILITY.md`](ANDROID_11_COMPATIBILITY.md) - Compatibilité Android 11
 
 ## 📖 Comment utiliser cette documentation
 

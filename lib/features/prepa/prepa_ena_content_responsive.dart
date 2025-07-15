@@ -89,7 +89,7 @@ class PrepaEnaContent extends StatelessWidget {
               children: [
                 _buildInfoCard(
                   'Épreuves du concours',
-                  'Le concours d\'entrée à l\'ENA comprend plusieurs épreuves écrites et orales couvrant différents domaines.',
+                  'Le concours d\'entrée à l\'ENA comprend une épreuve écrite de dissertation (4h) et une épreuve orale (20 min maximum).',
                   Icons.description,
                   context,
                   isSmallScreen: isSmallScreen,
