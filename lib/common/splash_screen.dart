@@ -200,14 +200,14 @@ class _SplashScreenState extends State<SplashScreen>
   void _finishTextAnimation() {
     if (mounted) {
       writingDone = true;
-      print('🎬 Texte terminé, attente de 1.5s avant effet damier...');
+
       // Attendre 1.5 secondes puis commencer la transition damier
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
-          print('🎯 Démarrage de l\'effet damier...');
+
           // Démarrer l'effet damier qui couvre progressivement l'écran
           _checkerboardController.forward().then((_) {
-            print('✅ Effet damier terminé, navigation vers login...');
+
             // Attendre un petit délai pour que l'effet soit bien visible avant de naviguer
             Future.delayed(const Duration(milliseconds: 300), () {
               if (mounted) {
@@ -467,7 +467,7 @@ class CheckerboardPainter extends CustomPainter {
         if (cellProgress > 0) {
           // Créer un effet de transition blanc qui couvre progressivement l'écran
           final double cellOpacity = cellProgress * 0.95; // Opacité élevée pour être bien visible
-          paint.color = Colors.white.withOpacity(cellOpacity);
+          paint.color = Colors.white.withValues(alpha: cellOpacity);
           
           final Rect rect = Rect.fromLTWH(
             col * cellWidth,

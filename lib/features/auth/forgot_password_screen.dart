@@ -1,6 +1,7 @@
 import 'package:ena_mobile_front/features/auth/email_verify.dart';
 import 'package:ena_mobile_front/services/auth_api_service.dart';
 import 'package:ena_mobile_front/widgets/error_popup.dart';
+import 'package:ena_mobile_front/utils/app_navigator.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -30,13 +31,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (result['success'] == true) {
         // Succès - Redirection vers vérification OTP (nouveau flux)
         if (mounted) {
-          Navigator.push(
+          AppNavigator.pushForm(
             context,
-            MaterialPageRoute(
-              builder: (_) => PasswordRecuperationScreen(
-                email: email.trim().toLowerCase(),
-                isFromForgotPassword: true, // Flux mot de passe oublié
-              ),
+            PasswordRecuperationScreen(
+              email: email.trim().toLowerCase(),
+              isFromForgotPassword: true, // Flux mot de passe oublié
             ),
           );
         }

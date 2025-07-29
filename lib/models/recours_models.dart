@@ -1,4 +1,5 @@
 // Modèles pour les données de recours provenant de l'API
+import 'dart:io';
 
 class Recours {
   final String id;
@@ -116,6 +117,66 @@ class CreateRecoursRequest {
       'candidature': candidature,
       'documents': documents,
     };
+  }
+}
+
+// Modèle pour les fichiers attachés localement (avant upload)
+class AttachedFile {
+  final File file;
+  final String name;
+  final int size;
+  final String type;
+
+  AttachedFile({
+    required this.file,
+    required this.name,
+    required this.size,
+    required this.type,
+  });
+
+  factory AttachedFile.fromFile(File file) {
+    final name = file.path.split('/').last;
+    final size = file.lengthSync();
+    final extension = name.split('.').last.toLowerCase();
+    
+    String type;
+    switch (extension) {
+      case 'pdf':
+        type = 'PDF';
+        break;
+      case 'jpg':
+      case 'jpeg':
+        type = 'JPEG';
+        break;
+      case 'png':
+        type = 'PNG';
+        break;
+      case 'doc':
+        type = 'DOC';
+        break;
+      case 'docx':
+        type = 'DOCX';
+        break;
+      default:
+        type = extension.toUpperCase();
+    }
+
+    return AttachedFile(
+      file: file,
+      name: name,
+      size: size,
+      type: type,
+    );
+  }
+
+  String get formattedSize {
+    if (size < 1024) {
+      return "$size B";
+    } else if (size < 1024 * 1024) {
+      return "${(size / 1024).toStringAsFixed(1)} KB";
+    } else {
+      return "${(size / (1024 * 1024)).toStringAsFixed(1)} MB";
+    }
   }
 }
 

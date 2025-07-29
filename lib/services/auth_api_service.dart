@@ -200,9 +200,8 @@ class AuthApiService {
     required String email,
   }) async {
     try {
-      print("🔵 forgotPassword: Envoi de la requête vers ${ApiConfig.forgotPasswordUrl}");
-      print("🔵 forgotPassword: Email = $email");
-      
+
+
       final response = await http.post(
         Uri.parse(ApiConfig.forgotPasswordUrl),
         headers: {
@@ -213,12 +212,10 @@ class AuthApiService {
         }),
       );
 
-      print("🔵 forgotPassword: Status code = ${response.statusCode}");
-      print("🔵 forgotPassword: Response body = ${response.body}");
 
       return _processHttpResponse(response, 'forgotPassword');
     } catch (e) {
-      print("🔴 forgotPassword: Erreur = $e");
+
       return {
         'success': false,
         'error': 'Erreur de connexion au serveur',
@@ -233,9 +230,8 @@ class AuthApiService {
     String action = 'registration', // 'registration' ou 'reset_password'
   }) async {
     try {
-      print("🔵 resendOtp: Envoi de la requête vers ${ApiConfig.otpUrl}");
-      print("🔵 resendOtp: Email = $email, Action = $action");
-      
+
+
       final response = await http.post(
         Uri.parse(ApiConfig.otpUrl),
         headers: {
@@ -247,12 +243,10 @@ class AuthApiService {
         }),
       );
 
-      print("🔵 resendOtp: Status code = ${response.statusCode}");
-      print("🔵 resendOtp: Response body = ${response.body}");
 
       return _processHttpResponse(response, 'resendOtp');
     } catch (e) {
-      print("🔴 resendOtp: Erreur = $e");
+
       return {
         'success': false,
         'error': 'Erreur de connexion au serveur',
@@ -710,7 +704,7 @@ class AuthApiService {
     required String token,
   }) async {
     try {
-      print('🚀 Starting parallel dashboard data loading...');
+
       final stopwatch = Stopwatch()..start();
 
       // Lancer tous les appels en parallèle
@@ -721,7 +715,6 @@ class AuthApiService {
       ], eagerError: false); // Continue même si une erreur survient
 
       stopwatch.stop();
-      print('🚀 Parallel loading completed in ${stopwatch.elapsedMilliseconds}ms');
 
       return {
         'success': true,
@@ -753,8 +746,7 @@ class AuthApiService {
       if (!forceRefresh) {
         final cachedData = await _loadFromCache();
         if (cachedData != null) {
-          print('⚡ Loaded from cache in ${stopwatch.elapsedMilliseconds}ms');
-          
+
           // Lancer la mise à jour en arrière-plan
           _updateCacheInBackground(token);
           
@@ -795,8 +787,7 @@ class AuthApiService {
     required String token,
   }) async {
     try {
-      print('🔄 Starting preload during authentication...');
-      
+
       // Charger les données statiques qui changent rarement
       final preloadFutures = [
         // Données utilisateur (change rarement)
@@ -814,13 +805,13 @@ class AuthApiService {
         if (results[1]['success'] == true) {
           await AggressiveCacheService.cacheCandidatureStatus(results[1]['data']);
         }
-        print('✅ Preload completed and cached');
+
       }).catchError((e) {
-        print('⚠️ Preload failed: $e');
+
       });
       
     } catch (e) {
-      print('❌ Preload error: $e');
+
     }
   }
 
@@ -844,7 +835,7 @@ class AuthApiService {
       
       return null;
     } catch (e) {
-      print('❌ Cache load error: $e');
+
       return null;
     }
   }
@@ -867,9 +858,9 @@ class AuthApiService {
       }
 
       await Future.wait(futures);
-      print('✅ Data cached successfully');
+
     } catch (e) {
-      print('⚠️ Cache save error: $e');
+
     }
   }
 
@@ -878,15 +869,15 @@ class AuthApiService {
     // Utiliser un isolate ou simplement un Future non-attendu
     Future.delayed(Duration(milliseconds: 100), () async {
       try {
-        print('🔄 Background cache update started...');
+
         final result = await loadDashboardDataParallel(token: token);
         
         if (result['success'] == true) {
           await _saveToCacheAsync(result['data']);
-          print('✅ Background cache update completed');
+
         }
       } catch (e) {
-        print('⚠️ Background cache update failed: $e');
+
       }
     });
   }

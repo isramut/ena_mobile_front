@@ -14,19 +14,31 @@ import 'package:ena_mobile_front/common/theme_provider.dart';
 import 'package:ena_mobile_front/common/app_themes.dart';
 import 'package:ena_mobile_front/common/mobile_platform_config.dart';
 import 'package:ena_mobile_front/services/biometric_service.dart';
+import 'package:ena_mobile_front/services/firebase_analytics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'common/splash_screen.dart';
 
 // Configuration spécifique Android/iOS pour ENA Mobile
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialiser Firebase
+  await Firebase.initializeApp();
+
+  // Charger les variables d'environnement
+  await dotenv.load(fileName: ".env");
 
   // Configuration optimisée pour Android et iOS
   MobilePlatformConfig.configurePlatform();
+
+  // Tracker l'ouverture de l'application
+  await FirebaseAnalyticsService.trackAppOpened();
 
   runApp(
     ChangeNotifierProvider(
@@ -49,6 +61,9 @@ class MyApp extends StatelessWidget {
           theme: AppThemes.lightTheme,
           darkTheme: AppThemes.darkTheme,
           themeMode: themeProvider.themeMode,
+          navigatorObservers: [
+            FirebaseAnalyticsService.observer,
+          ],
           supportedLocales: const [
             Locale('fr', ''), // Français
             Locale('en', ''), // Anglais

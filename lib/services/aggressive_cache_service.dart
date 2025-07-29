@@ -22,9 +22,8 @@ class AggressiveCacheService {
       };
       
       await prefs.setString('cache_$key', jsonEncode(cacheItem));
-      print('🗄️ Cache saved: $key (expires in ${expiry.inMinutes}min)');
     } catch (e) {
-      print('❌ Cache save failed for $key: $e');
+
     }
   }
 
@@ -35,7 +34,7 @@ class AggressiveCacheService {
       final cachedString = prefs.getString('cache_$key');
       
       if (cachedString == null) {
-        print('🗄️ Cache miss: $key');
+
         return null;
       }
 
@@ -45,15 +44,14 @@ class AggressiveCacheService {
       final now = DateTime.now().millisecondsSinceEpoch;
 
       if (now - timestamp > expiry) {
-        print('🗄️ Cache expired: $key');
+
         await prefs.remove('cache_$key');
         return null;
       }
 
-      print('🗄️ Cache hit: $key');
       return Map<String, dynamic>.from(cacheItem['data']);
     } catch (e) {
-      print('❌ Cache read failed for $key: $e');
+
       return null;
     }
   }
@@ -63,9 +61,9 @@ class AggressiveCacheService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('cache_$key');
-      print('🗄️ Cache invalidated: $key');
+
     } catch (e) {
-      print('❌ Cache invalidation failed for $key: $e');
+
     }
   }
 
@@ -79,9 +77,8 @@ class AggressiveCacheService {
         await prefs.remove(key);
       }
       
-      print('🗄️ All cache cleared (${keys.length} items)');
     } catch (e) {
-      print('❌ Cache clear failed: $e');
+
     }
   }
 

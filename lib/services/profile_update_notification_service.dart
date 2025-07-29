@@ -34,10 +34,10 @@ class ProfileUpdateNotificationService {
     );
     
     _profileUpdateController.add(event);
-    print('🔄 ProfileUpdateNotificationService: Profile update notified');
-    print('   - Photo updated: $photoUpdated');
-    print('   - Personal info updated: $personalInfoUpdated');
-    print('   - Contact info updated: $contactInfoUpdated');
+
+
+
+
   }
   
   /// Fermer le service (à appeler lors de la destruction de l'app)

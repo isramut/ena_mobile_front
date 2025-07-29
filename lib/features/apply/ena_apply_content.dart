@@ -1,6 +1,8 @@
 import 'package:ena_mobile_front/features/apply/candidature_process_screen.dart';
+import 'package:ena_mobile_front/features/recours/recours_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../utils/app_navigator.dart';
 
 class PostulerContent extends StatelessWidget {
   const PostulerContent({super.key});
@@ -235,11 +237,9 @@ class PostulerContent extends StatelessWidget {
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(
+                    AppNavigator.pushForm(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const CandidatureProcessScreen(),
-                      ),
+                      const CandidatureProcessScreen(),
                     );
                   },
                   icon: const Icon(Icons.arrow_forward_rounded, size: 20),
@@ -319,7 +319,7 @@ class PostulerContent extends StatelessWidget {
             ),
             trailing: Icon(Icons.arrow_forward_ios, color: redAccent, size: 16),
             onTap: () {
-              Navigator.pushNamed(context, '/recours');
+              AppNavigator.push(context, const RecoursScreen());
             },
           ),
         ),

@@ -13,7 +13,7 @@ class QuizApiService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString('auth_token');
     } catch (e) {
-      print('🔴 QuizApiService: Erreur lors de la récupération du token = $e');
+
       return null;
     }
   }
@@ -21,12 +21,11 @@ class QuizApiService {
   /// Récupère tous les modules de quiz depuis l'API
   static Future<Map<String, dynamic>> getQuizModules() async {
     try {
-      print('🔵 QuizApiService: Récupération des modules de quiz...');
-      
+
       // Obtenir le token d'authentification
       final token = await _getStoredToken();
       if (token == null) {
-        print('🔴 QuizApiService: Aucun token d\'authentification trouvé');
+
         return {
           'success': false,
           'error': 'Utilisateur non connecté',
@@ -34,7 +33,6 @@ class QuizApiService {
       }
 
       final url = '${ApiConfig.baseUrl}$_quizModulesEndpoint';
-      print('🔵 QuizApiService: URL = $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -44,23 +42,18 @@ class QuizApiService {
         },
       );
 
-      print('🔵 QuizApiService: Status code = ${response.statusCode}');
-      
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         final quizResponse = QuizResponse.fromJson(jsonData);
-        
-        print('🟢 QuizApiService: Succès - ${quizResponse.modules.length} modules récupérés');
-        print('🔵 QuizApiService: Total questions = ${quizResponse.summary.totalQuestions}');
-        
+
+
         return {
           'success': true,
           'data': quizResponse,
         };
       } else {
-        print('🔴 QuizApiService: Erreur ${response.statusCode}');
-        print('🔴 QuizApiService: Response body = ${response.body}');
-        
+
+
         return {
           'success': false,
           'error': 'Erreur lors de la récupération des modules de quiz',
@@ -69,7 +62,7 @@ class QuizApiService {
         };
       }
     } catch (e) {
-      print('🔴 QuizApiService: Exception = $e');
+
       return {
         'success': false,
         'error': 'Erreur de connexion au serveur',
@@ -98,7 +91,7 @@ class QuizApiService {
         return result;
       }
     } catch (e) {
-      print('🔴 QuizApiService: Erreur lors de la récupération du module $moduleId = $e');
+
       return {
         'success': false,
         'error': 'Module non trouvé',
@@ -113,8 +106,7 @@ class QuizApiService {
     required List<UserQuizAnswer> answers,
   }) async {
     try {
-      print('🔵 QuizApiService: Soumission des réponses pour le module $moduleId');
-      
+
       // Pour l'instant, on simule la soumission
       // TODO: Implémenter l'endpoint de soumission quand il sera disponible
       
@@ -129,7 +121,7 @@ class QuizApiService {
         },
       };
     } catch (e) {
-      print('🔴 QuizApiService: Erreur lors de la soumission = $e');
+
       return {
         'success': false,
         'error': 'Erreur lors de la soumission des réponses',
@@ -148,7 +140,7 @@ class QuizApiService {
     if (_cachedQuizData != null && 
         _cacheTimestamp != null && 
         DateTime.now().difference(_cacheTimestamp!) < _cacheExpiry) {
-      print('🟡 QuizApiService: Utilisation du cache');
+
       return {
         'success': true,
         'data': _cachedQuizData!['main'],
@@ -163,7 +155,7 @@ class QuizApiService {
       // Mettre en cache
       _cachedQuizData = {'main': result['data']};
       _cacheTimestamp = DateTime.now();
-      print('🟢 QuizApiService: Données mises en cache');
+
     }
 
     return result;
@@ -173,7 +165,7 @@ class QuizApiService {
   static void clearCache() {
     _cachedQuizData = null;
     _cacheTimestamp = null;
-    print('🟡 QuizApiService: Cache vidé');
+
   }
 
   /// Obtient les statistiques des modules

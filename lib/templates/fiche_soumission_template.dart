@@ -8,7 +8,7 @@ class FicheSoumissionTemplate {
   static const PdfColor enaLightBlue = PdfColor.fromInt(0xFF3A5998);
   static const PdfColor enaGray = PdfColor.fromInt(0xFF666666);
 
-  Future<pw.Page> buildPage(CandidaturePdfData data) async {
+  Future<pw.MultiPage> buildPage(CandidaturePdfData data) async {
     // Charger le logo ENA
     final logoBytes = await rootBundle.load('assets/images/ena_logo.png');
     final logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
@@ -17,94 +17,91 @@ class FicheSoumissionTemplate {
     final badgeBytes = await rootBundle.load('assets/images/badge.png');
     final badgeImage = pw.MemoryImage(badgeBytes.buffer.asUint8List());
 
-    return pw.Page(
+    return pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(20),
       build: (pw.Context context) {
-        return pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            // En-tête avec logo ENA et badge
-            _buildHeaderWithLogos(logoImage, badgeImage),
-            pw.SizedBox(height: 20),
-            
-            // Titre centré
-            _buildCenteredTitle(),
-            pw.SizedBox(height: 10),
-            
-            // Numéro de candidat (si disponible)
-            if (data.numero != null && data.numero!.isNotEmpty)
-              _buildNumeroCandidat(data.numero!),
-            pw.SizedBox(height: 20),
-            
-            // Message de remerciement
-            _buildThankYouMessage(),
-            pw.SizedBox(height: 20),
-            
-            // Informations personnelles
-            _buildSection('INFORMATIONS PERSONNELLES', [
-              _buildInfoRow('Nom:', data.nom),
-              _buildInfoRow('Post-nom:', data.postnom),
-              _buildInfoRow('Prénom:', data.prenom),
-              _buildInfoRow('Genre:', data.genre),
-              _buildInfoRow('Lieu de naissance:', data.lieuNaissance),
-              _buildInfoRow('Date de naissance:', data.dateNaissance),
-              _buildInfoRow('État civil:', data.etatCivil),
-              _buildInfoRow('Nationalité:', data.nationalite),
-              _buildInfoRow('Province d\'origine:', data.provinceOrigine),
-              _buildInfoRow('Province de résidence:', data.provinceResidence),
-              _buildInfoRow('Ville de résidence:', data.villeResidence),
-            ]),
-            
-            pw.SizedBox(height: 15),
-            
-            // Contact
-            _buildSection('CONTACT', [
-              _buildInfoRow('${data.typePieceIdentite}:', data.numeroPiece),
-              _buildInfoRow('Adresse:', data.adresse),
-              _buildInfoRow('Téléphone:', '${data.indicatif} ${data.telephone}'),
-              _buildInfoRow('Email:', data.email),
-            ]),
-            
-            pw.SizedBox(height: 15),
-            
-            // Formation
-            _buildSection('FORMATION ACADÉMIQUE', [
-              _buildInfoRow('Diplôme:', data.diplome),
-              _buildInfoRow('Année d\'obtention:', data.anneeObtention),
-              _buildInfoRow('Établissement:', data.etablissement),
-              _buildInfoRow('Filière:', data.filiere),
-              _buildInfoRow('Pourcentage:', '${data.pourcentage}%'),
-            ]),
-            
-            pw.SizedBox(height: 15),
-            
-            // Statut professionnel
-            _buildSection('STATUT PROFESSIONNEL', [
-              _buildInfoRow('Statut:', data.statutProfessionnel),
-              if (data.statutProfessionnel == 'Fonctionnaire') ...[
-                _buildInfoRow('Matricule:', data.matricule),
-                _buildInfoRow('Grade:', data.grade),
-                _buildInfoRow('Fonction:', data.fonction),
-                _buildInfoRow('Administration:', data.administration),
-                _buildInfoRow('Ministère:', data.ministere),
-              ] else if (data.statutProfessionnel == 'Employé privé') ...[
-                _buildInfoRow('Fonction:', data.fonction),
-                _buildInfoRow('Entreprise:', data.entreprise),
-              ],
-            ]),
-            
-            pw.SizedBox(height: 15),
-            
-            // Documents joints
-            _buildDocumentsSection(data),
-            
-            pw.Spacer(),
-            
-            // Pied de page
-            _buildFooter(data),
-          ],
-        );
+        return [
+          // En-tête avec logo ENA et badge
+          _buildHeaderWithLogos(logoImage, badgeImage),
+          pw.SizedBox(height: 20),
+          
+          // Titre centré
+          _buildCenteredTitle(),
+          pw.SizedBox(height: 10),
+          
+          // Numéro de candidat (si disponible)
+          if (data.numero != null && data.numero!.isNotEmpty)
+            _buildNumeroCandidat(data.numero!),
+          pw.SizedBox(height: 20),
+          
+          // Message de remerciement
+          _buildThankYouMessage(),
+          pw.SizedBox(height: 20),
+          
+          // Informations personnelles
+          _buildSection('INFORMATIONS PERSONNELLES', [
+            _buildInfoRow('Nom:', data.nom),
+            _buildInfoRow('Post-nom:', data.postnom),
+            _buildInfoRow('Prénom:', data.prenom),
+            _buildInfoRow('Genre:', data.genre),
+            _buildInfoRow('Lieu de naissance:', data.lieuNaissance),
+            _buildInfoRow('Date de naissance:', data.dateNaissance),
+            _buildInfoRow('État civil:', data.etatCivil),
+            _buildInfoRow('Nationalité:', data.nationalite),
+            _buildInfoRow('Province d\'origine:', data.provinceOrigine),
+            _buildInfoRow('Province de résidence:', data.provinceResidence),
+            _buildInfoRow('Ville de résidence:', data.villeResidence),
+          ]),
+          
+          pw.SizedBox(height: 15),
+          
+          // Contact
+          _buildSection('CONTACT', [
+            _buildInfoRow('${data.typePieceIdentite}:', data.numeroPiece),
+            _buildInfoRow('Adresse:', data.adresse),
+            _buildInfoRow('Téléphone:', '${data.indicatif} ${data.telephone}'),
+            _buildInfoRow('Email:', data.email),
+          ]),
+          
+          pw.SizedBox(height: 15),
+          
+          // Formation
+          _buildSection('FORMATION ACADÉMIQUE', [
+            _buildInfoRow('Diplôme:', data.diplome),
+            _buildInfoRow('Année d\'obtention:', data.anneeObtention),
+            _buildInfoRow('Établissement:', data.etablissement),
+            _buildInfoRow('Filière:', data.filiere),
+            _buildInfoRow('Pourcentage:', '${data.pourcentage}%'),
+          ]),
+          
+          pw.SizedBox(height: 15),
+          
+          // Statut professionnel
+          _buildSection('STATUT PROFESSIONNEL', [
+            _buildInfoRow('Statut:', data.statutProfessionnel),
+            if (data.statutProfessionnel == 'Fonctionnaire') ...[
+              _buildInfoRow('Matricule:', data.matricule),
+              _buildInfoRow('Grade:', data.grade),
+              _buildInfoRow('Fonction:', data.fonction),
+              _buildInfoRow('Administration:', data.administration),
+              _buildInfoRow('Ministère:', data.ministere),
+            ] else if (data.statutProfessionnel == 'Employé privé') ...[
+              _buildInfoRow('Fonction:', data.fonction),
+              _buildInfoRow('Entreprise:', data.entreprise),
+            ],
+          ]),
+          
+          pw.SizedBox(height: 20),
+          
+          // Documents joints - Nouvelle page automatique si nécessaire
+          _buildDocumentsSection(data),
+          
+          pw.SizedBox(height: 20),
+          
+          // Pied de page
+          _buildFooter(data),
+        ];
       },
     );
   }
@@ -501,19 +498,80 @@ class FicheSoumissionTemplate {
                     ),
                     pw.Container(
                       padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        doc['fichier']!.isNotEmpty 
-                            ? doc['fichier']!
-                            : 'Non fourni',
-                        style: pw.TextStyle(
-                          fontSize: 9,
-                          color: doc['fichier']!.isNotEmpty 
-                              ? PdfColors.black 
-                              : PdfColors.red,
-                          fontWeight: doc['fichier']!.isNotEmpty 
-                              ? pw.FontWeight.normal 
-                              : pw.FontWeight.bold,
-                        ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          // Statut avec icône
+                          pw.Row(
+                            children: [
+                              pw.Container(
+                                width: 12,
+                                height: 12,
+                                decoration: pw.BoxDecoration(
+                                  color: doc['fichier']! != 'Non fourni' 
+                                      ? PdfColors.green 
+                                      : PdfColors.red,
+                                  shape: pw.BoxShape.circle,
+                                ),
+                                child: pw.Center(
+                                  child: pw.Text(
+                                    doc['fichier']! != 'Non fourni' ? '✓' : '✗',
+                                    style: pw.TextStyle(
+                                      fontSize: 8,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              pw.SizedBox(width: 6),
+                              pw.Text(
+                                doc['fichier']! != 'Non fourni' ? 'FOURNI' : 'MANQUANT',
+                                style: pw.TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: doc['fichier']! != 'Non fourni' 
+                                      ? PdfColors.green 
+                                      : PdfColors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          if (doc['fichier']! != 'Non fourni') ...[
+                            pw.SizedBox(height: 4),
+                            pw.Text(
+                              'Nom du fichier:',
+                              style: pw.TextStyle(
+                                fontSize: 8,
+                                fontWeight: pw.FontWeight.bold,
+                                color: enaGray,
+                              ),
+                            ),
+                            pw.SizedBox(height: 2),
+                            pw.Container(
+                              width: double.infinity,
+                              padding: const pw.EdgeInsets.all(4),
+                              decoration: pw.BoxDecoration(
+                                color: PdfColor.fromInt(0xFFF3F4F6),
+                                borderRadius: pw.BorderRadius.circular(3),
+                                border: pw.Border.all(
+                                  color: PdfColor.fromInt(0xFFE5E7EB),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: pw.Text(
+                                doc['fichier']!,
+                                style: const pw.TextStyle(
+                                  fontSize: 7,
+                                  color: PdfColors.black,
+                                ),
+                                maxLines: 2,
+                                overflow: pw.TextOverflow.clip,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],

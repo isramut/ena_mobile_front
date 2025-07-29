@@ -150,9 +150,9 @@ mixin AutoSaveMixin on State {
       };
       
       await prefs.setString(autoSaveKey, jsonEncode(formData));
-      debugPrint('✅ Données du formulaire sauvegardées automatiquement');
+
     } catch (e) {
-      debugPrint('❌ Erreur lors de la sauvegarde automatique: $e');
+
     }
   }
 
@@ -234,9 +234,7 @@ mixin AutoSaveMixin on State {
           restoreFileFromPath(savedData['aptitudeFichierPath'], (file) => aptitudeFichier = file);
           restoreFileFromPath(savedData['releveNotesPath'], (file) => releveNotes = file);
         });
-        
-        debugPrint('✅ Données du formulaire restaurées avec succès');
-        
+
         // Afficher un message à l'utilisateur
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -253,7 +251,7 @@ mixin AutoSaveMixin on State {
         }
       }
     } catch (e) {
-      debugPrint('❌ Erreur lors du chargement des données sauvegardées: $e');
+
     }
   }
 
@@ -272,9 +270,9 @@ mixin AutoSaveMixin on State {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(autoSaveKey);
-      debugPrint('✅ Données sauvegardées supprimées');
+
     } catch (e) {
-      debugPrint('❌ Erreur lors de la suppression des données sauvegardées: $e');
+
     }
   }
 

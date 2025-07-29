@@ -1,12 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ena_mobile_front/features/prepa/quiz_content.dart';
+import 'package:ena_mobile_front/services/program_events_api_service.dart';
+import 'package:ena_mobile_front/models/program_event.dart';
+import '../../utils/app_navigator.dart';
 
-class PrepaEnaContent extends StatelessWidget {
+class PrepaEnaContent extends StatefulWidget {
   final Function(int)? onMenuChanged;
 
   const PrepaEnaContent({super.key, this.onMenuChanged});
+
+  @override
+  State<PrepaEnaContent> createState() => _PrepaEnaContentState();
+}
+
+class _PrepaEnaContentState extends State<PrepaEnaContent> {
+  // Variables pour gérer les données du calendrier
+  List<ProgramEvent> _calendarEvents = [];
+  bool _isLoadingCalendar = false;
+  String? _calendarError;
+  bool _hasTriedLoading = false; // Nouvelle variable pour éviter les rechargements multiples
+
+  /// Charge les événements du calendrier depuis l'API
 
   @override
   Widget build(BuildContext context) {
@@ -709,14 +726,24 @@ class PrepaEnaContent extends StatelessWidget {
   }
 
   void _navigateToQuiz(BuildContext context) {
-    Navigator.push(
+    AppNavigator.pushQuick(
       context,
-      MaterialPageRoute(builder: (context) => const QuizContent()),
+      const QuizContent(),
     );
   }
 
   // Méthode pour afficher les dialogues d'information
   void _showInfoDialog(BuildContext context, String type) {
+    // Si c'est le calendrier, réinitialiser l'état sans loading
+    if (type == 'calendrier') {
+      // Réinitialiser l'état sans loading
+      setState(() {
+        _calendarError = null;
+        _calendarEvents.clear();
+        _hasTriedLoading = false; // Permettre un nouveau chargement
+      });
+    }
+
     final Map<String, Map<String, dynamic>> dialogData = {
       'epreuves': {
         'title': 'Épreuves du concours ENA',
@@ -734,7 +761,7 @@ class PrepaEnaContent extends StatelessWidget {
         'title': 'Calendrier du concours',
         'icon': Icons.calendar_today,
         'color': const Color(0xFFF59E0B),
-        'content': _buildCalendrierContent(context),
+        'content': null, // On va construire le contenu dans un StatefulBuilder
       },
     };
 
@@ -744,11 +771,25 @@ class PrepaEnaContent extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final screenSize = MediaQuery.of(context).size;
+        final isSmallScreen = screenSize.width < 600;
+        final dialogWidth = isSmallScreen 
+            ? screenSize.width * 0.9  // 90% de la largeur sur petit écran
+            : screenSize.width > 800 
+                ? 500.0  // Largeur fixe sur grand écran
+                : screenSize.width * 0.8;  // 80% sur écran moyen
+        final dialogHeight = isSmallScreen 
+            ? screenSize.height * 0.8  // 80% de la hauteur sur petit écran
+            : 600.0;
+        
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
-            padding: const EdgeInsets.all(24),
-            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+            constraints: BoxConstraints(
+              maxWidth: dialogWidth,
+              maxHeight: dialogHeight,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,7 +806,7 @@ class PrepaEnaContent extends StatelessWidget {
                       child: Icon(
                         data['icon'],
                         color: data['color'],
-                        size: 24,
+                        size: isSmallScreen ? 20 : 24,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -773,27 +814,36 @@ class PrepaEnaContent extends StatelessWidget {
                       child: Text(
                         data['title'],
                         style: GoogleFonts.poppins(
-                          fontSize: 18,
+                          fontSize: isSmallScreen ? 16 : 18,
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(Icons.close),
                       tooltip: 'Fermer',
+                      iconSize: isSmallScreen ? 20 : 24,
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: isSmallScreen ? 16 : 20),
                 // Contenu du dialogue
                 Expanded(
                   child: SingleChildScrollView(
-                    child: data['content'],
+                    child: type == 'calendrier'
+                        ? StatefulBuilder(
+                            builder: (context, setDialogState) {
+                              return _buildCalendrierContentWithState(context, setDialogState);
+                            },
+                          )
+                        : data['content'],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: isSmallScreen ? 12 : 16),
                 // Bouton de fermeture
                 SizedBox(
                   width: double.infinity,
@@ -801,7 +851,7 @@ class PrepaEnaContent extends StatelessWidget {
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: data['color'],
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 10 : 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -811,6 +861,7 @@ class PrepaEnaContent extends StatelessWidget {
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
+                        fontSize: isSmallScreen ? 14 : 16,
                       ),
                     ),
                   ),
@@ -842,11 +893,11 @@ class PrepaEnaContent extends StatelessWidget {
           'Épreuve orale',
           [
             'Considérée comme une interview, la durée maximum de cette épreuve est de 20 minutes. Les critères d\'évaluation sont les suivants :',
-            '• Présentation et motivation',
-            '• Formation et compétence',
-            '• Test de personnalité',
-            '• Ethique, déontologie et bonne gouvernance dans l\'administration publique',
-            '• Test d\'opinion et culture générale.',
+            'Présentation et motivation',
+            'Formation et compétence',
+            'Test de personnalité',
+            'Ethique, déontologie et bonne gouvernance dans l\'administration publique',
+            'Test d\'opinion et culture générale.',
           ],
           Icons.mic,
           const Color(0xFF3B82F6),
@@ -870,7 +921,7 @@ class PrepaEnaContent extends StatelessWidget {
       children: [
         _buildConditionCard('Nationalité', 'Être de nationalité congolaise (RDC)', Icons.flag, context),
         _buildConditionCard('Âge', 'Avoir entre 18 ans minimum et 35 ans maximum à la date du début de la scolarité', Icons.cake, context),
-        _buildConditionCard('Diplôme', 'Licence universitaire ou équivalent', Icons.school, context),
+        _buildConditionCard('Diplôme', 'Licence universitaire (BAC+5) ou équivalent', Icons.school, context),
         _buildConditionCard('Santé', 'Certificat médical d\'aptitude physique établi dans un hôpital public', Icons.health_and_safety, context),
         _buildConditionCard('Relevé des notes', 'Relevé des notes de la dernière année', Icons.grade, context),
         _buildConditionCard('Engagement', 'Servir l\'État pendant au moins 7 ans', Icons.handshake, context),
@@ -885,27 +936,247 @@ class PrepaEnaContent extends StatelessWidget {
     );
   }
 
-  // Contenu pour le dialogue du calendrier
-  Widget _buildCalendrierContent(BuildContext context) {
+  // Contenu pour le dialogue du calendrier avec gestion d'état séparée
+  Widget _buildCalendrierContentWithState(BuildContext context, StateSetter setDialogState) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    // Si ce n'est pas encore en cours de chargement et qu'il n'y a pas de données, commencer le chargement une seule fois
+    if (!_isLoadingCalendar && _calendarEvents.isEmpty && _calendarError == null && !_hasTriedLoading) {
+      _hasTriedLoading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadCalendarEventsWithDialogUpdate(setDialogState);
+      });
+    }
+
+    // Affichage en cas d'erreur
+    if (_calendarError != null) {
+      return Column(
+        children: [
+          SizedBox(height: isSmallScreen ? 16 : 20),
+          Icon(
+            Icons.error_outline,
+            size: isSmallScreen ? 40 : 48,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          SizedBox(height: isSmallScreen ? 12 : 16),
+          Text(
+            'Erreur de chargement',
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 14 : 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          SizedBox(height: isSmallScreen ? 6 : 8),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 0),
+            child: Text(
+              _calendarError!,
+              style: GoogleFonts.poppins(
+                fontSize: isSmallScreen ? 11 : 12,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.visible,
+            ),
+          ),
+          SizedBox(height: isSmallScreen ? 12 : 16),
+          SizedBox(
+            width: isSmallScreen ? double.infinity : null,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                _hasTriedLoading = false; // Permettre un nouveau chargement
+                _loadCalendarEventsWithDialogUpdate(setDialogState);
+              },
+              icon: Icon(Icons.refresh, size: isSmallScreen ? 16 : 20),
+              label: Text(
+                'Réessayer',
+                style: GoogleFonts.poppins(fontSize: isSmallScreen ? 12 : 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 16 : 20,
+                  vertical: isSmallScreen ? 8 : 12,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: isSmallScreen ? 16 : 20),
+        ],
+      );
+    }
+
+    // Affichage de l'indicateur de chargement
+    if (_isLoadingCalendar) {
+      return Column(
+        children: [
+          SizedBox(height: isSmallScreen ? 30 : 40),
+          SizedBox(
+            width: isSmallScreen ? 24 : 32,
+            height: isSmallScreen ? 24 : 32,
+            child: const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+              strokeWidth: 3,
+            ),
+          ),
+          SizedBox(height: isSmallScreen ? 16 : 20),
+          Text(
+            'Chargement des événements...',
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 12 : 14,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          SizedBox(height: isSmallScreen ? 30 : 40),
+        ],
+      );
+    }
+
+    // Si des événements sont disponibles depuis l'API, les afficher
+    if (_calendarEvents.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Événements depuis l'API
+          ..._calendarEvents.map((event) => _buildCalendrierCardFromEvent(event, context)),
+          SizedBox(height: isSmallScreen ? 12 : 16),
+          _buildInfoBox(
+            'Données mises à jour depuis le système ENA',
+            Icons.cloud_done,
+            const Color(0xFFF59E0B),
+            context,
+          ),
+        ],
+      );
+    }
+
+    // Si les données ont été chargées mais aucun événement trouvé
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildCalendrierCard('Inscriptions', 'Janvier - Février', 'Dépôt des dossiers', Icons.app_registration, context),
-        _buildCalendrierCard('Clôture', 'Mars', 'Date limite de candidature', Icons.close, context),
-        _buildCalendrierCard('Épreuves écrites', 'Avril - Mai', 'Examens dans les centres', Icons.edit, context),
-        _buildCalendrierCard('Résultats écrits', 'Juin', 'Liste des admissibles', Icons.article, context),
-        _buildCalendrierCard('Épreuve orale', 'Juillet', 'Entretiens avec le jury', Icons.mic, context),
-        _buildCalendrierCard('Résultats finaux', 'Août', 'Liste définitive des admis', Icons.emoji_events, context),
-        _buildCalendrierCard('Rentrée', 'Septembre', 'Début de la formation', Icons.school, context),
-        const SizedBox(height: 16),
-        _buildInfoBox(
-          'Les dates peuvent varier selon les décisions du Ministère',
-          Icons.info,
-          const Color(0xFFF59E0B),
-          context,
+        SizedBox(height: isSmallScreen ? 16 : 20),
+        Icon(
+          Icons.event_busy,
+          size: isSmallScreen ? 40 : 48,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        Text(
+          'Aucun événement disponible',
+          style: GoogleFonts.poppins(
+            fontSize: isSmallScreen ? 14 : 16,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 6 : 8),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 0),
+          child: Text(
+            'Il n\'y a aucun événement de concours ENA pour le moment.\nVeuillez consulter régulièrement cette section pour les mises à jour.',
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 11 : 12,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+        SizedBox(
+          width: isSmallScreen ? double.infinity : null,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              _hasTriedLoading = false; // Permettre un nouveau chargement
+              _loadCalendarEventsWithDialogUpdate(setDialogState);
+            },
+            icon: Icon(Icons.refresh, size: isSmallScreen ? 16 : 20),
+            label: Text(
+              'Actualiser',
+              style: GoogleFonts.poppins(fontSize: isSmallScreen ? 12 : 14),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 16 : 20,
+                vertical: isSmallScreen ? 8 : 12,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 16 : 20),
       ],
     );
+  }
+
+  /// Charge les événements du calendrier avec mise à jour du dialogue
+  Future<void> _loadCalendarEventsWithDialogUpdate(StateSetter setDialogState) async {
+    setState(() {
+      _isLoadingCalendar = true;
+      _calendarError = null;
+    });
+    
+    // Mettre à jour aussi l'état du dialogue
+    setDialogState(() {
+      _isLoadingCalendar = true;
+      _calendarError = null;
+    });
+
+    try {
+      // Récupérer le token d'authentification
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      // Appeler l'API pour récupérer les événements (même méthode que la page d'accueil)
+      final result = await ProgramEventsApiService.getRecentEventsForHome(token: token);
+
+      if (mounted) {
+        if (result['success'] == true) {
+          final List<ProgramEvent> events = result['data'] as List<ProgramEvent>;
+          
+          setState(() {
+            _calendarEvents = events; // Prendre tous les événements comme la page d'accueil
+            _isLoadingCalendar = false;
+          });
+          
+          // Mettre à jour aussi l'état du dialogue
+          setDialogState(() {
+            _calendarEvents = events;
+            _isLoadingCalendar = false;
+          });
+        } else {
+          setState(() {
+            _calendarEvents = [];
+            _calendarError = result['error'] ?? 'Erreur lors du chargement';
+            _isLoadingCalendar = false;
+          });
+          
+          // Mettre à jour aussi l'état du dialogue
+          setDialogState(() {
+            _calendarEvents = [];
+            _calendarError = result['error'] ?? 'Erreur lors du chargement';
+            _isLoadingCalendar = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _calendarEvents = [];
+          _calendarError = 'Erreur de connexion: $e';
+          _isLoadingCalendar = false;
+        });
+        
+        // Mettre à jour aussi l'état du dialogue
+        setDialogState(() {
+          _calendarEvents = [];
+          _calendarError = 'Erreur de connexion: $e';
+          _isLoadingCalendar = false;
+        });
+      }
+    }
   }
 
   // Widgets helper
@@ -1010,95 +1281,279 @@ class PrepaEnaContent extends StatelessWidget {
     );
   }
 
-  Widget _buildCalendrierCard(String title, String periode, String description, IconData icon, BuildContext context) {
+  /// Construit une carte calendrier depuis un événement de l'API
+  Widget _buildCalendrierCardFromEvent(ProgramEvent event, BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+    
+    // Formatage de la période depuis les dates de l'événement
+    final startDate = event.startDatetime;
+    final endDate = event.endDatetime;
+    
+    String periode;
+    if (startDate.year == endDate.year && startDate.month == endDate.month && startDate.day == endDate.day) {
+      // Même jour
+      periode = '${startDate.day}/${startDate.month}/${startDate.year}';
+    } else if (startDate.year == endDate.year && startDate.month == endDate.month) {
+      // Même mois
+      periode = '${startDate.day}-${endDate.day}/${startDate.month}/${startDate.year}';
+    } else {
+      // Différents mois
+      periode = '${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}/${startDate.year}';
+    }
+
+    // Détermination de l'icône selon le type d'événement
+    IconData icon;
+    switch (event.type.toLowerCase()) {
+      case 'inscription':
+      case 'inscriptions':
+        icon = Icons.app_registration;
+        break;
+      case 'cloture':
+      case 'clôture':
+      case 'deadline':
+        icon = Icons.close;
+        break;
+      case 'examen':
+      case 'epreuve':
+      case 'test':
+        icon = Icons.edit;
+        break;
+      case 'resultats':
+      case 'résultats':
+        icon = Icons.article;
+        break;
+      case 'oral':
+      case 'entretien':
+        icon = Icons.mic;
+        break;
+      case 'final':
+      case 'admission':
+        icon = Icons.emoji_events;
+        break;
+      case 'rentree':
+      case 'rentrée':
+      case 'formation':
+        icon = Icons.school;
+        break;
+      default:
+        icon = Icons.event;
+    }
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 8 : 12),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.2)),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(icon, color: const Color(0xFFF59E0B), size: 16),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
+        child: isSmallScreen
+            ? Column(  // Layout vertical sur petit écran
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      Container(
+                        padding: EdgeInsets.all(isSmallScreen ? 4 : 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(icon, color: const Color(0xFFF59E0B), size: isSmallScreen ? 14 : 16),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          title,
+                          event.name,
                           style: GoogleFonts.poppins(
-                            fontSize: 13,
+                            fontSize: isSmallScreen ? 12 : 13,
                             fontWeight: FontWeight.w600,
                             color: Theme.of(context).colorScheme.onSurface,
                           ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          periode,
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFFF59E0B),
-                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 6 : 8, 
+                      vertical: 2
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      periode,
+                      style: GoogleFonts.poppins(
+                        fontSize: isSmallScreen ? 9 : 10,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFF59E0B),
+                      ),
+                    ),
+                  ),
+                  if (event.description.isNotEmpty || event.notes.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      event.description.isNotEmpty ? event.description : event.notes,
+                      style: GoogleFonts.poppins(
+                        fontSize: isSmallScreen ? 10 : 11,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
+                    ),
+                  ],
+                  if (event.location.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: isSmallScreen ? 8 : 10,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            event.location,
+                            style: GoogleFonts.poppins(
+                              fontSize: isSmallScreen ? 9 : 10,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              fontStyle: FontStyle.italic,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              )
+            : Row(  // Layout horizontal sur grand écran
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(icon, color: const Color(0xFFF59E0B), size: 16),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                event.name,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                periode,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFFF59E0B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (event.description.isNotEmpty || event.notes.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            event.description.isNotEmpty ? event.description : event.notes,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ],
+                        if (event.location.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 10,
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  event.location,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildInfoBox(String text, IconData icon, Color color, BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+    
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
+          Icon(
+            icon, 
+            color: color, 
+            size: isSmallScreen ? 16 : 18,
+          ),
+          SizedBox(width: isSmallScreen ? 6 : 8),
           Expanded(
             child: Text(
               text,
               style: GoogleFonts.poppins(
-                fontSize: 12,
+                fontSize: isSmallScreen ? 11 : 12,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
+              overflow: TextOverflow.visible,
             ),
           ),
         ],

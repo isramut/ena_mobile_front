@@ -4,6 +4,7 @@ import 'package:ena_mobile_front/models/quiz_models.dart';
 import 'package:ena_mobile_front/services/quiz_api_service.dart';
 import 'package:ena_mobile_front/widgets/error_popup.dart';
 import 'dart:async';
+import 'dart:math' as math;
 
 class QuizContent extends StatefulWidget {
   const QuizContent({super.key});
@@ -33,7 +34,7 @@ class _QuizContentState extends State<QuizContent>
   bool quizCompleted = false;
   int currentQuestionIndex = 0;
   int score = 0;
-  int timeLeft = 45; // secondes par question
+  int timeLeft = 45; // sera ajusté selon le niveau sélectionné
   Timer? timer;
   String? selectedAnswer;
   bool answerSubmitted = false;
@@ -56,19 +57,36 @@ class _QuizContentState extends State<QuizContent>
     'Gestion Publique',
     'Institutions',
   ];
-  final List<int> questionCounts = [5, 10, 15, 20];
+  final List<int> questionCounts = [10, 15, 20];
+
+  // Variables pour le carrousel des thématiques
+  late PageController _themePageController;
+  int _currentThemePageIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _progressController = AnimationController(
-      duration: const Duration(seconds: 45),
+      duration: Duration(seconds: _getTimeForLevel(selectedLevel)),
       vsync: this,
     );
     _cardController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+    _themePageController = PageController();
+    
+    // Listener pour le carrousel des thèmes
+    _themePageController.addListener(() {
+      if (_themePageController.hasClients) {
+        final newIndex = _themePageController.page?.round() ?? 0;
+        if (newIndex != _currentThemePageIndex) {
+          setState(() {
+            _currentThemePageIndex = newIndex;
+          });
+        }
+      }
+    });
     
     // Charger les données depuis l'API
     _loadQuizData();
@@ -94,8 +112,7 @@ class _QuizContentState extends State<QuizContent>
           // Sélectionner le premier module du niveau sélectionné
           _updateSelectedModule();
         });
-        
-        print('✅ Quiz data loaded: ${availableModules.length} modules');
+
       } else {
         setState(() {
           isLoadingData = false;
@@ -126,9 +143,8 @@ class _QuizContentState extends State<QuizContent>
     } else {
       selectedModule = modulesForLevel.first;
     }
-    
-    print('📚 Module sélectionné: ${selectedModule?.title ?? 'Aucun'}');
-    print('🎯 Niveau: $selectedLevel, Thème: $selectedTheme');
+
+
   }
 
   @override
@@ -136,6 +152,7 @@ class _QuizContentState extends State<QuizContent>
     timer?.cancel();
     _progressController.dispose();
     _cardController.dispose();
+    _themePageController.dispose();
     super.dispose();
   }
 
@@ -157,15 +174,36 @@ class _QuizContentState extends State<QuizContent>
     questions = List.from(selectedModule!.questions);
     questions.shuffle();
     questions = questions.take(selectedQuestionCount).toList();
-    
-    print('🎯 Quiz démarré: ${selectedModule!.title}');
-    print('📝 Questions: ${questions.length}');
-    
+
+
     _startTimer();
   }
 
+  /// Retourne la durée en secondes selon le niveau de difficulté
+  int _getTimeForLevel(String level) {
+    switch (level) {
+      case 'debutant':
+        return 45; // 45 secondes pour débutant
+      case 'moyen':
+        return 30; // 30 secondes pour moyen
+      case 'avance':
+        return 15; // 15 secondes pour avancé
+      default:
+        return 45; // Par défaut
+    }
+  }
+
   void _startTimer() {
-    timeLeft = 45;
+    final duration = _getTimeForLevel(selectedLevel);
+    timeLeft = duration;
+    
+    // Reconfigurer l'animation avec la nouvelle durée
+    _progressController.dispose();
+    _progressController = AnimationController(
+      duration: Duration(seconds: duration),
+      vsync: this,
+    );
+    
     _progressController.reset();
     _progressController.forward();
 
@@ -279,7 +317,7 @@ class _QuizContentState extends State<QuizContent>
               'Chargement du quiz...',
               style: GoogleFonts.poppins(
                 fontSize: 16,
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -314,7 +352,7 @@ class _QuizContentState extends State<QuizContent>
                 errorMessage,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -338,10 +376,10 @@ class _QuizContentState extends State<QuizContent>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // En-tête
+          // En-tête compact
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -355,22 +393,28 @@ class _QuizContentState extends State<QuizContent>
             ),
             child: Column(
               children: [
-                Icon(Icons.quiz, size: 60, color: theme.colorScheme.onPrimary),
-                const SizedBox(height: 16),
+                Icon(
+                  Icons.quiz, 
+                  size: isSmallScreen ? 40 : 48, 
+                  color: theme.colorScheme.onPrimary
+                ),
+                SizedBox(height: isSmallScreen ? 8 : 12),
                 Text(
                   'Quiz de Préparation',
                   style: GoogleFonts.poppins(
-                    fontSize: 24,
+                    fontSize: isSmallScreen ? 18 : 20,
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onPrimary,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: isSmallScreen ? 4 : 6),
                 Text(
                   'Testez vos connaissances pour le concours ENA',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: isSmallScreen ? 12 : 13,
                     color: theme.colorScheme.onPrimary.withValues(alpha: 0.9),
                   ),
                   textAlign: TextAlign.center,
@@ -381,72 +425,33 @@ class _QuizContentState extends State<QuizContent>
             ),
           ),
 
-          const SizedBox(height: 32),
+          SizedBox(height: isSmallScreen ? 16 : 20),
 
-          // Configuration du quiz
-          _buildConfigSection('Niveau de difficulté', Icons.trending_up),
-          const SizedBox(height: 8),
-          _buildLevelSelector(),
+          // 1. Niveaux - Cards horizontales
+          _buildConfigSection('Niveau', Icons.trending_up),
+          SizedBox(height: isSmallScreen ? 8 : 12),
+          _buildHorizontalLevelSelector(),
 
-          const SizedBox(height: 24),
+          SizedBox(height: isSmallScreen ? 20 : 24),
 
+          // 2. Nombre de questions - Cards horizontales
+          _buildConfigSection('Questions', Icons.format_list_numbered),
+          SizedBox(height: isSmallScreen ? 8 : 12),
+          _buildHorizontalQuestionCountSelector(),
+
+          SizedBox(height: isSmallScreen ? 20 : 24),
+
+          // 3. Thématiques - Style "Matières d'étude" avec carrousel 2x2
           _buildConfigSection('Thématique', Icons.category),
-          const SizedBox(height: 8),
-          _buildThemeSelector(),
+          SizedBox(height: isSmallScreen ? 8 : 12),
+          _buildThemeCarousel(),
 
-          const SizedBox(height: 24),
+          SizedBox(height: isSmallScreen ? 20 : 24),
 
-          _buildConfigSection(
-            'Nombre de questions',
-            Icons.format_list_numbered,
-          ),
-          const SizedBox(height: 8),
-          _buildQuestionCountSelector(),
-
-          const SizedBox(height: 32),
-
-          // Informations du quiz
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.brightness == Brightness.dark
-                  ? const Color(0xFF10B981).withValues(alpha: 0.2)
-                  : const Color(0xFFDEF7EC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF10B981)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.info, color: Color(0xFF10B981)),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Informations du quiz',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        color: theme.brightness == Brightness.dark
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFF065F46),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow('⏱️', '45 secondes par question'),
-                _buildInfoRow('🎯', 'Questions à choix multiples'),
-                _buildInfoRow('📊', 'Score final avec analyse'),
-                _buildInfoRow('🔄', 'Possibilité de recommencer'),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Bouton de démarrage
+          // 4. Bouton de démarrage (déplacé avant les infos)
           SizedBox(
             width: double.infinity,
-            height: 56,
+            height: isSmallScreen ? 48 : 56,
             child: ElevatedButton(
               onPressed: startQuiz,
               style: ElevatedButton.styleFrom(
@@ -460,7 +465,7 @@ class _QuizContentState extends State<QuizContent>
               child: Text(
                 'Commencer le Quiz',
                 style: GoogleFonts.poppins(
-                  fontSize: 18,
+                  fontSize: isSmallScreen ? 16 : 18,
                   fontWeight: FontWeight.w600,
                 ),
                 maxLines: 1,
@@ -468,6 +473,67 @@ class _QuizContentState extends State<QuizContent>
               ),
             ),
           ),
+
+          SizedBox(height: isSmallScreen ? 16 : 20),
+
+          // 5. Informations du quiz (à la fin)
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.dark
+                  ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                  : const Color(0xFFDEF7EC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF10B981)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info, 
+                      color: const Color(0xFF10B981), 
+                      size: isSmallScreen ? 16 : 18
+                    ),
+                    SizedBox(width: isSmallScreen ? 6 : 8),
+                    Expanded(
+                      child: Text(
+                        'Informations du quiz',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: isSmallScreen ? 13 : 14,
+                          color: theme.brightness == Brightness.dark
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF065F46),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: isSmallScreen ? 8 : 10),
+                // Informations sur deux colonnes pour gagner de l'espace
+                Row(
+                  children: [
+                    Expanded(child: _buildCompactInfoRow('⏱️', 'Timer adaptatif')),
+                    SizedBox(width: isSmallScreen ? 6 : 8),
+                    Expanded(child: _buildCompactInfoRow('🎯', 'QCM')),
+                  ],
+                ),
+                SizedBox(height: isSmallScreen ? 4 : 6),
+                Row(
+                  children: [
+                    Expanded(child: _buildCompactInfoRow('📊', 'Score détaillé')),
+                    SizedBox(width: isSmallScreen ? 6 : 8),
+                    Expanded(child: _buildCompactInfoRow('🔄', 'Recommencer')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: isSmallScreen ? 20 : 24),
         ],
       ),
     );
@@ -866,72 +932,95 @@ class _QuizContentState extends State<QuizContent>
     );
   }
 
-  Widget _buildLevelSelector() {
-    final theme = Theme.of(context);
+  Widget _buildHorizontalLevelSelector() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    
     return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        children: levels.map((level) {
+      padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 16 : 20),
+      child: Row(
+        children: levels.asMap().entries.map((entry) {
+          final index = entry.key;
+          final level = entry.value;
+          final displayName = levelDisplayNames[index];
           final isSelected = selectedLevel == level;
-          final displayName = levelDisplayNames[levels.indexOf(level)];
-          return InkWell(
-            onTap: () {
-              setState(() {
-                selectedLevel = level;
-                _updateSelectedModule();
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                    : null,
-                border: Border(
-                  bottom: level != levels.last
-                      ? BorderSide(
-                          color: theme.colorScheme.outline.withValues(
-                            alpha: 0.3,
-                          ),
-                        )
-                      : BorderSide.none,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Radio<String>(
-                    value: level,
-                    groupValue: selectedLevel,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedLevel = value!;
-                        _updateSelectedModule();
-                      });
-                    },
-                    activeColor: theme.colorScheme.primary,
+          final timeDisplay = _getTimeForLevel(level);
+          
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 4 : 6),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    selectedLevel = level;
+                    _updateSelectedModule();
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: isSmallScreen ? 12 : 16,
+                    horizontal: isSmallScreen ? 8 : 12,
                   ),
-                  Expanded(
-                    child: Text(
-                      displayName,
-                      style: GoogleFonts.poppins(
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? const Color(0xFFEF4444) 
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected 
+                          ? const Color(0xFFEF4444) 
+                          : const Color(0xFFE5E7EB),
+                      width: 2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        offset: const Offset(0, 2),
+                        blurRadius: 8,
+                        color: isSelected 
+                            ? const Color(0xFFEF4444).withValues(alpha: 0.2)
+                            : Colors.black.withValues(alpha: 0.05),
+                      ),
+                    ],
                   ),
-                ],
+                  child: Column(
+                    children: [
+                      Icon(
+                        _getLevelIcon(level),
+                        size: isSmallScreen ? 20 : 24,
+                        color: isSelected 
+                            ? Colors.white 
+                            : const Color(0xFFEF4444),
+                      ),
+                      SizedBox(height: isSmallScreen ? 6 : 8),
+                      Text(
+                        displayName,
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected 
+                              ? Colors.white 
+                              : const Color(0xFF2D3748),
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
+                      Text(
+                        '${timeDisplay}s/Q',
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 10 : 11,
+                          color: isSelected 
+                              ? Colors.white.withValues(alpha: 0.9) 
+                              : const Color(0xFF6B7280),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           );
@@ -940,8 +1029,110 @@ class _QuizContentState extends State<QuizContent>
     );
   }
 
-  Widget _buildThemeSelector() {
-    final theme = Theme.of(context);
+  IconData _getLevelIcon(String level) {
+    switch (level) {
+      case 'debutant':
+        return Icons.school_outlined;
+      case 'intermediaire':
+        return Icons.trending_up;
+      case 'avance':
+        return Icons.star_outline;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  Widget _buildHorizontalQuestionCountSelector() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 16 : 20),
+      child: Row(
+        children: questionCounts.asMap().entries.map((entry) {
+          final count = entry.value;
+          final isSelected = selectedQuestionCount == count;
+          
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 4 : 6),
+              child: InkWell(
+                onTap: () => setState(() => selectedQuestionCount = count),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: isSmallScreen ? 12 : 16,
+                    horizontal: isSmallScreen ? 8 : 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? const Color(0xFF3B82F6) 
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected 
+                          ? const Color(0xFF3B82F6) 
+                          : const Color(0xFFE5E7EB),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        offset: const Offset(0, 2),
+                        blurRadius: 8,
+                        color: isSelected 
+                            ? const Color(0xFF3B82F6).withValues(alpha: 0.2)
+                            : Colors.black.withValues(alpha: 0.05),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.quiz_outlined,
+                        size: isSmallScreen ? 20 : 24,
+                        color: isSelected 
+                            ? Colors.white 
+                            : const Color(0xFF3B82F6),
+                      ),
+                      SizedBox(height: isSmallScreen ? 6 : 8),
+                      Text(
+                        '$count',
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 16 : 18,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected 
+                              ? Colors.white 
+                              : const Color(0xFF2D3748),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
+                      Text(
+                        'questions',
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 10 : 11,
+                          color: isSelected 
+                              ? Colors.white.withValues(alpha: 0.9) 
+                              : const Color(0xFF6B7280),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildThemeCarousel() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
     
     // Générer les thèmes disponibles depuis les modules de l'API
     final availableThemes = availableModules
@@ -957,138 +1148,217 @@ class _QuizContentState extends State<QuizContent>
     if (!themesToShow.contains(selectedTheme) && themesToShow.isNotEmpty) {
       selectedTheme = themesToShow.first;
     }
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        children: themesToShow.map((themeItem) {
-          final isSelected = selectedTheme == themeItem;
-          return InkWell(
-            onTap: () {
-              setState(() {
-                selectedTheme = themeItem;
-                _updateSelectedModule();
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                    : null,
-                border: Border(
-                  bottom: themeItem != themesToShow.last
-                      ? BorderSide(
-                          color: theme.colorScheme.outline.withValues(
-                            alpha: 0.3,
+
+    return Column(
+      children: [
+        SizedBox(
+          // Hauteur adaptative selon la taille d'écran
+          height: isSmallScreen ? 320 : 380,
+          child: PageView.builder(
+            controller: _themePageController,
+            itemCount: (themesToShow.length / 4).ceil(),
+            itemBuilder: (context, pageIndex) {
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: isSmallScreen ? 8 : 12),
+                child: GridView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    // Ratio adaptatif pour différentes tailles d'écran
+                    childAspectRatio: isSmallScreen ? 0.85 : 1.0,
+                    crossAxisSpacing: isSmallScreen ? 6 : 10,
+                    mainAxisSpacing: isSmallScreen ? 8 : 12,
+                  ),
+                  itemCount: math.min(4, themesToShow.length - (pageIndex * 4)),
+                  itemBuilder: (context, index) {
+                    final themeIndex = (pageIndex * 4) + index;
+                    if (themeIndex >= themesToShow.length) return const SizedBox();
+                    
+                    final theme = themesToShow[themeIndex];
+                    final isSelected = selectedTheme == theme;
+                    final color = _getThemeColor(themeIndex);
+                    
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          selectedTheme = theme;
+                          _updateSelectedModule();
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isSelected
+                                ? [color, color.withValues(alpha: 0.8)]
+                                : [color.withValues(alpha: 0.1), color.withValues(alpha: 0.05)],
                           ),
-                        )
-                      : BorderSide.none,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Radio<String>(
-                    value: themeItem,
-                    groupValue: selectedTheme,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedTheme = value!;
-                        _updateSelectedModule();
-                      });
-                    },
-                    activeColor: theme.colorScheme.primary,
-                  ),
-                  Expanded(
-                    child: Text(
-                      themeItem,
-                      style: GoogleFonts.poppins(
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? color : color.withValues(alpha: 0.3),
+                            width: isSelected ? 3 : 1,
+                          ),
+                          boxShadow: isSelected ? [
+                            BoxShadow(
+                              offset: const Offset(0, 4),
+                              blurRadius: 12,
+                              color: color.withValues(alpha: 0.3),
+                            ),
+                          ] : null,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Icône responsive agrandie
+                              Icon(
+                                _getThemeIcon(theme),
+                                size: isSmallScreen ? 24 : 28,
+                                color: isSelected ? Colors.white : color,
+                              ),
+                              SizedBox(height: isSmallScreen ? 6 : 8),
+                              // Zone de texte flexible et responsive
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    theme,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: _getResponsiveFontSize(theme, isSmallScreen),
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? Colors.white : const Color(0xFF2D3748),
+                                      height: 1.2, // Espacement des lignes compact
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: _getMaxLines(theme, isSmallScreen),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildQuestionCountSelector() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        children: questionCounts.map((count) {
-          final isSelected = selectedQuestionCount == count;
-          return Expanded(
-            child: InkWell(
-              onTap: () => setState(() => selectedQuestionCount = count),
-              child: Container(
-                padding: const EdgeInsets.all(16),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        if ((themesToShow.length / 4).ceil() > 1) ...[
+          SizedBox(height: isSmallScreen ? 0 : 1), // Espace minimal entre indicateur et thèmes
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              (themesToShow.length / 4).ceil(),
+              (index) => Container(
+                width: isSmallScreen ? 6 : 8,
+                height: isSmallScreen ? 6 : 8,
+                margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 3 : 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF1E3A8A) : null,
-                  border: Border(
-                    right: count != questionCounts.last
-                        ? const BorderSide(color: Color(0xFFE5E7EB))
-                        : BorderSide.none,
-                  ),
-                ),
-                child: Text(
-                  '$count',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : const Color(0xFF374151),
-                  ),
-                  textAlign: TextAlign.center,
+                  shape: BoxShape.circle,
+                  color: _currentThemePageIndex == index
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFFE5E7EB),
                 ),
               ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String emoji, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: const Color(0xFF065F46),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
-      ),
+      ],
+    );
+  }
+  
+  // Méthodes pour la responsivité des cards modules
+  double _getResponsiveFontSize(String text, bool isSmallScreen) {
+    // Taille de base selon l'écran
+    final baseSize = isSmallScreen ? 9.0 : 10.0;
+    final mediumSize = isSmallScreen ? 10.0 : 11.0;
+    final largeSize = isSmallScreen ? 11.0 : 12.0;
+    
+    // Ajuster selon la longueur du texte
+    if (text.length <= 12) {
+      return largeSize;
+    } else if (text.length <= 20) {
+      return mediumSize;
+    } else {
+      return baseSize;
+    }
+  }
+  
+  int _getMaxLines(String text, bool isSmallScreen) {
+    // Plus de lignes pour les petits écrans car les cards sont plus hautes proportionnellement
+    final baseLines = isSmallScreen ? 3 : 2;
+    
+    // Ajuster selon la longueur du texte
+    if (text.length <= 15) {
+      return baseLines;
+    } else if (text.length <= 30) {
+      return baseLines + 1;
+    } else {
+      return baseLines + 2; // Maximum 4-5 lignes
+    }
+  }
+  
+  Color _getThemeColor(int index) {
+    final colors = [
+      const Color(0xFFEF4444), // Rouge
+      const Color(0xFF3B82F6), // Bleu
+      const Color(0xFF10B981), // Vert
+      const Color(0xFFF59E0B), // Orange
+      const Color(0xFF8B5CF6), // Violet
+      const Color(0xFFEC4899), // Rose
+      const Color(0xFF06B6D4), // Cyan
+      const Color(0xFF84CC16), // Lime
+    ];
+    return colors[index % colors.length];
+  }
+
+  IconData _getThemeIcon(String theme) {
+    // Map themes to appropriate icons
+    final themeMap = {
+      'Droit constitutionnel': Icons.balance,
+      'Droit administratif': Icons.account_balance,
+      'Droit civil': Icons.gavel,
+      'Économie': Icons.trending_up,
+      'Histoire': Icons.history_edu,
+      'Culture générale': Icons.public,
+      'Questions européennes': Icons.flag,
+      'Note de synthèse': Icons.article,
+    };
+    
+    return themeMap[theme] ?? Icons.quiz;
+  }
+
+  Widget _buildCompactInfoRow(String emoji, String text) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    
+    return Row(
+      children: [
+        Text(
+          emoji, 
+          style: TextStyle(fontSize: isSmallScreen ? 12 : 14)
+        ),
+        SizedBox(width: isSmallScreen ? 4 : 6),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 10 : 12,
+              color: theme.brightness == Brightness.dark
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFF065F46),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1200,9 +1470,12 @@ class _QuizContentState extends State<QuizContent>
   }
 
   Color _getTimerColor() {
-    if (timeLeft > 30) return const Color(0xFF10B981);
-    if (timeLeft > 15) return const Color(0xFFF59E0B);
-    return const Color(0xFFEF4444);
+    final totalTime = _getTimeForLevel(selectedLevel);
+    final timeRatio = timeLeft / totalTime;
+    
+    if (timeRatio > 0.6) return const Color(0xFF10B981); // Vert si > 60% du temps
+    if (timeRatio > 0.3) return const Color(0xFFF59E0B); // Orange si > 30% du temps
+    return const Color(0xFFEF4444); // Rouge si < 30% du temps
   }
 
   Map<String, dynamic> _getResultData(int percentage) {
@@ -1267,5 +1540,3 @@ class _QuizContentState extends State<QuizContent>
     return '${theme.substring(0, 17)}...';
   }
 }
-
-

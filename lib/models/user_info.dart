@@ -157,10 +157,10 @@ class UserInfo {
 
   /// Méthode de débogage pour vérifier la construction de l'URL
   void debugProfilePictureUrl() {
-    print('=== DEBUG PROFILE PICTURE ===');
-    print('profilePicture: $profilePicture');
-    print('baseUrl: ${ApiConfig.baseUrl}');
-    print('fullProfilePictureUrl: $fullProfilePictureUrl');
-    print('===============================');
+
+
+
+
+
   }
 }

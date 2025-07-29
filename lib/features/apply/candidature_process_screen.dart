@@ -8,12 +8,18 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../config/api_config.dart';
 import '../../services/auth_api_service.dart';
 import '../../services/pdf_generator_service.dart';
 import '../../services/image_cache_service.dart';
 import '../../services/profile_update_notification_service.dart';
+import '../../services/firebase_analytics_service.dart';
 import '../../models/candidature_pdf_data.dart';
+import '../../models/pdf_result.dart';
+import '../../models/user_info.dart';
+import '../../widgets/animated_popup.dart';
 
 class CandidatureProcessScreen extends StatefulWidget {
   const CandidatureProcessScreen({super.key});
@@ -27,6 +33,9 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   bool loading = false;
   final _formKey1 = GlobalKey<FormState>();
   final _formKey2 = GlobalKey<FormState>();
+  
+  // Informations utilisateur pour contrôler la soumission
+  UserInfo? _userInfo;
 
   // === TextEditingControllers
   final nomController = TextEditingController();
@@ -84,6 +93,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     "Kasaï-Central",
     "Kasaï-Oriental",
     "Kinshasa",
+    "Kongo-Central",
     "Kwango",
     "Kwilu",
     "Lomami",
@@ -100,9 +110,137 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     "Tshopo",
     "Tshuapa",
   ];
-  final List<String> indicatifs = ["+243", "+33", "+32", "+1", "+44"];
+  final List<String> indicatifs = [
+    "+243", // République Démocratique du Congo (par défaut)
+    "+1",   // États-Unis/Canada
+    "+33",  // France
+    "+32",  // Belgique
+    "+44",  // Royaume-Uni
+    "+49",  // Allemagne
+    "+39",  // Italie
+    "+34",  // Espagne
+    "+31",  // Pays-Bas
+    "+41",  // Suisse
+    "+43",  // Autriche
+    "+45",  // Danemark
+    "+46",  // Suède
+    "+47",  // Norvège
+    "+48",  // Pologne
+    "+351", // Portugal
+    "+30",  // Grèce
+    "+7",   // Russie
+    "+86",  // Chine
+    "+81",  // Japon
+    "+82",  // Corée du Sud
+    "+91",  // Inde
+    "+62",  // Indonésie
+    "+60",  // Malaisie
+    "+65",  // Singapour
+    "+66",  // Thaïlande
+    "+84",  // Vietnam
+    "+63",  // Philippines
+    "+61",  // Australie
+    "+64",  // Nouvelle-Zélande
+    "+27",  // Afrique du Sud
+    "+234", // Nigeria
+    "+254", // Kenya
+    "+233", // Ghana
+    "+225", // Côte d'Ivoire
+    "+221", // Sénégal
+    "+212", // Maroc
+    "+213", // Algérie
+    "+216", // Tunisie
+    "+20",  // Égypte
+    "+251", // Éthiopie
+    "+256", // Ouganda
+    "+255", // Tanzanie
+    "+263", // Zimbabwe
+    "+260", // Zambie
+    "+244", // Angola
+    "+236", // République Centrafricaine
+    "+237", // Cameroun
+    "+241", // Gabon
+    "+242", // République du Congo
+    "+226", // Burkina Faso
+    "+227", // Niger
+    "+229", // Bénin
+    "+228", // Togo
+    "+223", // Mali
+    "+224", // Guinée
+    "+245", // Guinée-Bissau
+    "+238", // Cap-Vert
+    "+220", // Gambie
+    "+232", // Sierra Leone
+    "+231", // Liberia
+    "+230", // Maurice
+    "+248", // Seychelles
+    "+261", // Madagascar
+    "+269", // Comores
+    "+262", // Réunion
+    "+55",  // Brésil
+    "+54",  // Argentine
+    "+56",  // Chili
+    "+57",  // Colombie
+    "+58",  // Venezuela
+    "+51",  // Pérou
+    "+52",  // Mexique
+    "+53",  // Cuba
+    "+593", // Équateur
+    "+594", // Guyane française
+    "+595", // Paraguay
+    "+596", // Martinique
+    "+597", // Suriname
+    "+598", // Uruguay
+    "+599", // Antilles néerlandaises
+    "+852", // Hong Kong
+    "+853", // Macao
+    "+886", // Taïwan
+    "+880", // Bangladesh
+    "+92",  // Pakistan
+    "+93",  // Afghanistan
+    "+94",  // Sri Lanka
+    "+95",  // Myanmar
+    "+98",  // Iran
+    "+90",  // Turquie
+    "+972", // Israël
+    "+961", // Liban
+    "+962", // Jordanie
+    "+963", // Syrie
+    "+964", // Irak
+    "+965", // Koweït
+    "+966", // Arabie Saoudite
+    "+967", // Yémen
+    "+968", // Oman
+    "+971", // Émirats Arabes Unis
+    "+973", // Bahreïn
+    "+974", // Qatar
+    "+975", // Bhoutan
+    "+976", // Mongolie
+    "+977", // Népal
+    "+880", // Bangladesh
+    "+960", // Maldives
+    "+370", // Lituanie
+    "+371", // Lettonie
+    "+372", // Estonie
+    "+373", // Moldavie
+    "+374", // Arménie
+    "+375", // Biélorussie
+    "+376", // Andorre
+    "+377", // Monaco
+    "+378", // Saint-Marin
+    "+380", // Ukraine
+    "+381", // Serbie
+    "+382", // Monténégro
+    "+383", // Kosovo
+    "+385", // Croatie
+    "+386", // Slovénie
+    "+387", // Bosnie-Herzégovine
+    "+389", // Macédoine du Nord
+    "+420", // République tchèque
+    "+421", // Slovaquie
+  ];
   final List<String> diplomes = [
-    "Diplome d'Etat",
+    "Diplôme d'Etat",
     "Bac+3",
     "Bac+5",
     "Master",
@@ -197,6 +335,8 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   ];
   final List<String> grades = [
     "Huissier",
+    "Agent auxiliaire de 2ème classe",
+    "Agent auxiliaire de 1ère classe",
     "Agents d'administration de 2ème classe",
     "Agent d'administration de 1ère classe",
     "Attaché d'administration de 2ème classe",
@@ -227,6 +367,11 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     _startAutoSave();
     // Validation supplémentaire pour éviter les erreurs de dropdown
     _validateAndFixDropdownValues();
+    // Charger les informations utilisateur
+    _loadUserInfo();
+    // Tracker le début du processus de candidature
+    FirebaseAnalyticsService.trackCandidatureStarted();
+    FirebaseAnalyticsService.trackScreenView('candidature_process_screen');
   }
 
   @override
@@ -252,6 +397,30 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     administrationAttacheController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // ===================== CHARGEMENT DES INFORMATIONS UTILISATEUR =====================
+  
+  /// Charge les informations de l'utilisateur connecté pour vérifier les permissions
+  Future<void> _loadUserInfo() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token != null && token.isNotEmpty) {
+        final result = await AuthApiService.getUserInfo(token: token);
+        if (result['success'] == true && result['data'] != null) {
+          setState(() {
+            _userInfo = UserInfo.fromJson(result['data']);
+          });
+        }
+      }
+    } catch (e) {
+      // En cas d'erreur, on laisse _userInfo à null
+      if (kDebugMode) {
+        print('Erreur lors du chargement des informations utilisateur: $e');
+      }
+    }
   }
 
   // ===================== VALIDATION DU TÉLÉPHONE =====================
@@ -342,9 +511,10 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       };
       
       await prefs.setString(_autoSaveKey, jsonEncode(formData));
-      debugPrint('✅ Auto-sauvegarde effectuée');
+      
+      // Tracker la sauvegarde automatique
+      FirebaseAnalyticsService.trackAutoSave(currentStep);
     } catch (e) {
-      debugPrint('❌ Erreur auto-sauvegarde: $e');
     }
   }
 
@@ -414,7 +584,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
           pourcentage = savedData['pourcentage']?.toDouble() ?? 60.0;
           statutPro = savedData['statutPro'] ?? '';
           grade = savedData['grade'] ?? '';
-          indicatif = savedData['indicatif'] ?? '';
+          indicatif = savedData['indicatif'] ?? '+243';
           autreFiliere = savedData['autreFiliere'] ?? '';
           typePieceIdentite = savedData['typePieceIdentite'] ?? '';
           
@@ -433,7 +603,8 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
           _restoreFileFromPath(savedData['releveNotesPath'], (file) => releveNotes = file);
         });
         
-        debugPrint('✅ Données restaurées');
+        // Tracker la restauration des données
+        FirebaseAnalyticsService.trackDataRestored(currentStep);
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -450,7 +621,6 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
         }
       }
     } catch (e) {
-      debugPrint('❌ Erreur chargement: $e');
     }
   }
 
@@ -467,9 +637,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_autoSaveKey);
-      debugPrint('✅ Données supprimées');
     } catch (e) {
-      debugPrint('❌ Erreur suppression: $e');
     }
   }
 
@@ -477,7 +645,6 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   void _validateAndFixDropdownValues() {
     // Valider et corriger provinceOrigine
     if (provinceOrigine.isNotEmpty && !provinces.contains(provinceOrigine)) {
-      debugPrint('⚠️ Province origine invalide détectée: $provinceOrigine');
       if (provinceOrigine == "Kasaï Oriental") {
         provinceOrigine = "Kasaï-Oriental";
       } else if (provinceOrigine == "Kasaï Central") {
@@ -485,12 +652,10 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       } else {
         provinceOrigine = ""; // Reset si non trouvé
       }
-      debugPrint('✅ Province origine corrigée: $provinceOrigine');
     }
 
     // Valider et corriger provinceResidence
     if (provinceResidence.isNotEmpty && !provinces.contains(provinceResidence)) {
-      debugPrint('⚠️ Province résidence invalide détectée: $provinceResidence');
       if (provinceResidence == "Kasaï Oriental") {
         provinceResidence = "Kasaï-Oriental";
       } else if (provinceResidence == "Kasaï Central") {
@@ -498,52 +663,59 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       } else {
         provinceResidence = ""; // Reset si non trouvé
       }
-      debugPrint('✅ Province résidence corrigée: $provinceResidence');
     }
 
     // Valider les autres dropdown values
     final validGenres = ["Masculin", "Féminin"];
     if (genre.isNotEmpty && !validGenres.contains(genre)) {
-      debugPrint('⚠️ Genre invalide détecté: $genre - Reset');
       genre = "";
     }
 
     final validNationalites = ["Congolaise", "Autre"];
     if (nationalite.isNotEmpty && !validNationalites.contains(nationalite)) {
-      debugPrint('⚠️ Nationalité invalide détectée: $nationalite - Reset');
       nationalite = "";
     }
 
     final validEtatsCivils = ["Célibataire", "Marié", "Divorcé", "Veuf (ve)"];
     if (etatCivil.isNotEmpty && !validEtatsCivils.contains(etatCivil)) {
-      debugPrint('⚠️ État civil invalide détecté: $etatCivil - Reset');
       etatCivil = "";
     }
 
     if (diplome.isNotEmpty && !diplomes.contains(diplome)) {
-      debugPrint('⚠️ Diplôme invalide détecté: $diplome - Reset');
       diplome = "";
     }
 
     if (filiere.isNotEmpty && !filieres.contains(filiere)) {
-      debugPrint('⚠️ Filière invalide détectée: $filiere - Reset');
       filiere = "";
     }
 
     final validStatuts = ["Fonctionnaire", "Employé privé", "Sans emploi"];
     if (statutPro.isNotEmpty && !validStatuts.contains(statutPro)) {
-      debugPrint('⚠️ Statut professionnel invalide détecté: $statutPro - Reset');
       statutPro = "";
     }
 
     if (grade.isNotEmpty && !grades.contains(grade)) {
-      debugPrint('⚠️ Grade invalide détecté: $grade - Reset');
       grade = "";
     }
 
     if (indicatif.isNotEmpty && !indicatifs.contains(indicatif)) {
-      debugPrint('⚠️ Indicatif invalide détecté: $indicatif - Reset');
       indicatif = "+243"; // Valeur par défaut
+    }
+  }
+
+  /// Retourne le nom de l'étape pour le tracking Analytics
+  String _getStepName(int stepNumber) {
+    switch (stepNumber) {
+      case 0:
+        return 'informations_personnelles';
+      case 1:
+        return 'informations_academiques';
+      case 2:
+        return 'pieces_jointes';
+      case 3:
+        return 'recapitulatif';
+      default:
+        return 'etape_inconnue';
     }
   }
 
@@ -650,7 +822,18 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
 
   void _nextStep() {
     if (_validateCurrentStep()) {
+      // Tracker la validation de l'étape actuelle
+      String stepName = _getStepName(currentStep);
+      FirebaseAnalyticsService.trackStepValidated(currentStep + 1, stepName);
+      
       setState(() => currentStep++);
+      
+      // Tracker la progression vers l'étape suivante
+      if (currentStep < 4) {
+        String nextStepName = _getStepName(currentStep);
+        FirebaseAnalyticsService.trackCandidatureStepProgress(currentStep + 1, nextStepName);
+      }
+      
       // Déplacer le scroll vers le haut pour que l'utilisateur voit le nouveau contenu
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
@@ -664,36 +847,49 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     } else {
       final theme = Theme.of(context);
       String message;
+      String errorType;
       switch (currentStep) {
         case 0:
           if (!(_formKey1.currentState?.validate() ?? false)) {
             message = "Merci de compléter tous les champs obligatoires.";
+            errorType = "champs_obligatoires_manquants";
           } else {
             message = "Merci d'ajouter une photo.";
+            errorType = "photo_manquante";
           }
           break;
         case 1:
           // Messages spécifiques selon le statut professionnel
           if (statutPro == "Fonctionnaire") {
             message = "Merci de compléter tous les champs obligatoires pour les fonctionnaires : diplôme, année d'obtention, établissement, filière, matricule, grade, administration d'attache, fonction et ministère.";
+            errorType = "champs_fonctionnaire_manquants";
           } else if (statutPro == "Employé privé") {
             message = "Merci de compléter tous les champs obligatoires pour les employés privés : diplôme, année d'obtention, établissement, filière, fonction et entreprise.";
+            errorType = "champs_employe_prive_manquants";
           } else if (statutPro == "Sans emploi") {
             message = "Merci de compléter tous les champs obligatoires : diplôme, année d'obtention, établissement, filière et statut professionnel.";
+            errorType = "champs_sans_emploi_manquants";
           } else {
             message = "Merci de compléter tous les champs obligatoires.";
+            errorType = "champs_obligatoires_manquants";
           }
           break;
         case 2:
           if (statutPro == "Fonctionnaire") {
             message = "Merci de joindre tous les fichiers obligatoires, y compris l'acte d'admission sous statut pour les fonctionnaires.";
+            errorType = "fichiers_fonctionnaire_manquants";
           } else {
             message = "Merci de joindre tous les fichiers obligatoires.";
+            errorType = "fichiers_obligatoires_manquants";
           }
           break;
         default:
           message = "Veuillez vérifier les informations saisies.";
+          errorType = "erreur_validation_generale";
       }
+      
+      // Tracker l'erreur de validation
+      FirebaseAnalyticsService.trackStepValidationError(currentStep + 1, errorType);
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -936,10 +1132,20 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
           final file = selectedFile; // selectedFile est garanti non-null ici
           if (_validateFile(file, isImage: isImage)) {
             setState(() => setter(file));
+            
+            // Tracker l'upload du fichier
+            String fileType = isImage ? 'image' : 'document';
+            String fileName = file.path.split('/').last;
+            int fileSizeBytes = file.lengthSync();
+            FirebaseAnalyticsService.trackFileUpload(fileType, fileName, fileSizeBytes);
           }
         }
       } catch (e) {
         if (mounted) {
+          // Tracker l'erreur d'upload
+          String fileType = isImage ? 'image' : 'document';
+          FirebaseAnalyticsService.trackFileUploadError(fileType, e.toString());
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Erreur lors de la sélection du fichier: $e"),
@@ -1027,16 +1233,31 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
 
   void _showFiliereDialog() async {
     final controller = TextEditingController();
-    await showDialog(
+    await AnimatedPopup.showAnimatedDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Autre filière"),
+      animationType: AnimationType.blurBackdrop,
+      duration: const Duration(milliseconds: 350),
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          "Autre filière",
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(hintText: "Entrez votre filière"),
+          decoration: InputDecoration(
+            hintText: "Entrez votre filière",
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ),
         actions: [
           TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text("Annuler"),
+          ),
+          ElevatedButton(
             onPressed: () {
               setState(() {
                 autreFiliere = controller.text.trim();
@@ -1047,7 +1268,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
                 }
                 filiere = autreFiliere;
               });
-              Navigator.of(ctx).pop();
+              Navigator.of(context).pop();
             },
             child: const Text("OK"),
           ),
@@ -1295,6 +1516,9 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
             ),
             ElevatedButton(
               onPressed: () {
+                // Tracker l'abandon du processus de candidature
+                FirebaseAnalyticsService.trackCandidatureAbandoned(currentStep, 'user_exit');
+                
                 // Sauvegarder avant de quitter
                 _saveFormData();
                 Navigator.of(context).pop(); // Fermer le dialogue
@@ -1629,49 +1853,89 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
                             : null,
                       ),
                       const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Flexible(
-                            flex: 3,
-                            child: DropdownButtonFormField<String>(
-                              decoration: _inputDecoration("Indicatif"),
-                              value: indicatif.isEmpty ? null : indicatif,
-                              items: indicatifs
-                                  .map(
-                                    (v) => DropdownMenuItem(
-                                      value: v,
-                                      child: Text(
-                                        v,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                      // Champ téléphone unifié avec indicatif
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Dropdown indicatif
+                              Container(
+                                padding: const EdgeInsets.only(left: 12),
+                                alignment: Alignment.center,
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: indicatif.isEmpty ? "+243" : indicatif,
+                                    items: indicatifs
+                                        .map(
+                                          (v) => DropdownMenuItem(
+                                            value: v,
+                                            child: Text(
+                                              v,
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                                color: theme.colorScheme.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) =>
+                                        setState(() => indicatif = v ?? "+243"),
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: theme.colorScheme.primary,
                                     ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) =>
-                                  setState(() => indicatif = v ?? ""),
-                              validator: (v) => (v == null || v.isEmpty) 
-                                  ? "Indicatif requis" 
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Flexible(
-                            flex: 6,
-                            child: TextFormField(
-                              controller: telephoneController,
-                              decoration: _inputDecoration("Téléphone")
-                                  .copyWith(
-                                hintText: "Ex: 123456789 (9 chiffres, sans 0)",
-                                helperText: "Format: 9 chiffres sans le 0 initial",
+                                  ),
+                                ),
                               ),
-                              keyboardType: TextInputType.phone,
-                              maxLength: 9,
-                              validator: _validatePhoneNumber,
-                            ),
+                              // Séparateur vertical
+                              Container(
+                                width: 1,
+                                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                              ),
+                              // Champ téléphone
+                              Expanded(
+                                child: TextFormField(
+                                  controller: telephoneController,
+                                  decoration: InputDecoration(
+                                    labelText: "Numéro de téléphone",
+                                    hintText: "Ex: 825007071 (9 chiffres, sans 0)",
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 16,
+                                    ),
+                                    labelStyle: GoogleFonts.poppins(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    floatingLabelStyle: GoogleFonts.poppins(
+                                      color: theme.colorScheme.primary,
+                                      fontSize: 12,
+                                    ),
+                                    floatingLabelBehavior: FloatingLabelBehavior.auto,
+                                    hintStyle: GoogleFonts.poppins(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.phone,
+                                  maxLength: 9,
+                                  validator: _validatePhoneNumber,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
@@ -2163,7 +2427,9 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
               ),
               onPressed: loading
                   ? null
-                  : (isLast ? _onSubmit : _nextStep),
+                  : (isLast && _userInfo?.canSubmitCandidature == false)
+                      ? () => _showPeriodClosedDialog() // Afficher le popup explicatif
+                      : (isLast ? _onSubmit : _nextStep),
               child: loading
                   ? const SizedBox(
                       width: 24,
@@ -2182,54 +2448,68 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
+    AnimatedPopup.showAnimatedDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      animationType: AnimationType.blurBackdrop,
+      duration: const Duration(milliseconds: 400),
+      child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: Color(0xFFE74C3C),
-              size: 54,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "Erreur",
-              style: GoogleFonts.poppins(
-                               fontWeight: FontWeight.bold,
-                fontSize: 19,
-                color: const Color(0xFFE74C3C),
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 100),
+              child: const Icon(
+                Icons.error_outline,
+                color: Color(0xFFE74C3C),
+                size: 54,
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 14.5,
-                color: Colors.grey[700],
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 200),
+              child: Text(
+                "Erreur",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 19,
+                  color: const Color(0xFFE74C3C),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 300),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 14.5,
+                  color: Colors.grey[700],
+                ),
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE74C3C),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 400),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE74C3C),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  "Compris",
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    "Compris",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),
@@ -2241,55 +2521,162 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   }
 
   void _showSuccessDialog() {
-    showDialog(
+    AnimatedPopup.showAnimatedDialog<void>(
       context: context,
+      animationType: AnimationType.blurBackdrop,
+      duration: const Duration(milliseconds: 500),
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Color(0xFF27AE60), size: 54),
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 100),
+              child: const Icon(Icons.check_circle, color: Color(0xFF27AE60), size: 54),
+            ),
             const SizedBox(height: 12),
-            Text(
-              "Candidature envoyée !",
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                fontSize: 19,
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 200),
+              child: Text(
+                "Candidature envoyée !",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 19,
+                ),
               ),
             ),
             const SizedBox(height: 7),
-            Text(
-              "Votre dossier a été transmis avec succès. Le PDF de votre candidature a été généré automatiquement.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(fontSize: 14.5),
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 300),
+              child: Text(
+                "Votre dossier a été transmis avec succès. Le PDF de votre candidature a été généré automatiquement.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 14.5),
+              ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1C3D8F),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
+            AnimatedPopupChild(
+              delay: const Duration(milliseconds: 400),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1C3D8F),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: Text(
-                  "Retour à l'accueil",
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                  child: Text(
+                    "Retour à l'accueil",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Fermer le dialog
+                    Navigator.of(context).popUntil((route) => route.isFirst); // Retourner à la page home
+                  },
                 ),
-                onPressed: () {
-                  Navigator.of(context).pop(); // Fermer le dialog
-                  Navigator.of(context).popUntil((route) => route.isFirst); // Retourner à la page home
-                },
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showPeriodClosedDialog() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth > 400 ? 350.0 : screenWidth * 0.85;
+    
+    AnimatedPopup.showAnimatedDialog<void>(
+      context: context,
+      animationType: AnimationType.blurBackdrop,
+      duration: const Duration(milliseconds: 400),
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          width: dialogWidth,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedPopupChild(
+                delay: const Duration(milliseconds: 100),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: Icon(
+                    Icons.access_time_rounded,
+                    color: Colors.orange[700],
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              AnimatedPopupChild(
+                delay: const Duration(milliseconds: 200),
+                child: Text(
+                  "Hors période de soumission",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.orange[800],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 12),
+              AnimatedPopupChild(
+                delay: const Duration(milliseconds: 300),
+                child: Text(
+                  "La période de soumission des candidatures est actuellement fermée. Veuillez consulter les actualités ou contacter l'administration pour connaître les prochaines dates d'ouverture.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.orange[700],
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              AnimatedPopupChild(
+                delay: const Duration(milliseconds: 400),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange[600],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      "Compris",
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2469,27 +2856,77 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
         // 🔄 MISE À JOUR DU CACHE UTILISATEUR AVEC LA NOUVELLE PHOTO
         await _updateUserCacheWithPhoto(token);
         
-        // Générer automatiquement le PDF
+        // 📄 GÉNÉRER LE PDF AVEC GESTION DES PERMISSIONS
         try {
           final pdfData = await _preparePdfData();
           final pdfService = PdfGeneratorService();
-          await pdfService.generateAndPreviewPdf(pdfData);
+          final result = await pdfService.generateAndDownloadPdf(pdfData);
+          
+          if (result.isSaved && result.filePath != null) {
+            // PDF sauvegardé avec succès
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'PDF téléchargé avec succès dans le dossier Téléchargements !',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 6),
+                  behavior: SnackBarBehavior.floating,
+                  action: SnackBarAction(
+                    label: 'Partager',
+                    textColor: Colors.white,
+                    onPressed: () async {
+                      await _shareExistingPdf(result.filePath!);
+                    },
+                  ),
+                ),
+              );
+            }
+          } else if (!result.isSaved && result.bytes != null && result.data != null) {
+            // PDF généré mais non sauvegardé - proposer le partage via SnackBar
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'PDF généré avec succès (non sauvegardé - permissions requises)',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 6),
+                  behavior: SnackBarBehavior.floating,
+                  action: SnackBarAction(
+                    label: 'Partager',
+                    textColor: Colors.white,
+                    onPressed: () async {
+                      await _sharePdfFromBytes(result);
+                    },
+                  ),
+                ),
+              );
+            }
+          }
         } catch (e) {
-          debugPrint('Erreur lors de la génération du PDF: $e');
-          // Continuer même si le PDF échoue
+          // Afficher un avertissement mais ne pas faire échouer la candidature
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Candidature soumise avec succès ! (Erreur lors de la génération du PDF)',
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 4),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
         
         _showSuccessDialog();
       } else {
         final errorData = postRespBody.isNotEmpty ? postRespBody : "Erreur lors de la soumission de la candidature";
-        
-        // 🔍 DIAGNOSTIC DÉTAILLÉ DE L'ERREUR
-        debugPrint('❌ ERREUR SOUMISSION CANDIDATURE:');
-        debugPrint('📊 Status Code: ${postResponse.statusCode}');
-        debugPrint('📋 Response Body: $postRespBody');
-        debugPrint('🔗 Request URL: ${postRequest.url}');
-        debugPrint('📤 Request Fields: ${postRequest.fields}');
-        debugPrint('📎 Request Files: ${postRequest.files.map((f) => f.field).join(', ')}');
         
         // Vérifier si c'est une erreur de candidature en double
         if (errorData.toLowerCase().contains("unique") || 
@@ -2523,12 +2960,6 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
         }
       }
     } catch (e) {
-      // 🔍 DIAGNOSTIC DÉTAILLÉ DE L'EXCEPTION
-      debugPrint('💥 EXCEPTION LORS DE LA SOUMISSION:');
-      debugPrint('🔥 Type: ${e.runtimeType}');
-      debugPrint('📝 Message: $e');
-      debugPrint('📍 StackTrace: ${StackTrace.current}');
-      
       String errorMessage = "Une erreur technique s'est produite.";
       
       if (e.toString().contains('SocketException') || e.toString().contains('NetworkException')) {
@@ -2552,8 +2983,6 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   /// Met à jour le cache utilisateur avec les nouvelles informations après soumission de candidature
   Future<void> _updateUserCacheWithPhoto(String token) async {
     try {
-      debugPrint('🔄 Mise à jour du cache utilisateur après candidature...');
-      
       // Récupérer les informations utilisateur mises à jour depuis l'API
       final result = await AuthApiService.getUserInfo(token: token);
       
@@ -2573,13 +3002,9 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
           contactInfoUpdated: false,
           updatedData: result['data'],
         );
-        
-        debugPrint('✅ Cache utilisateur mis à jour avec la nouvelle photo');
       } else {
-        debugPrint('❌ Échec de la récupération des informations utilisateur mises à jour');
       }
     } catch (e) {
-      debugPrint('❌ Erreur lors de la mise à jour du cache utilisateur: $e');
       // Ne pas faire échouer la candidature pour cette erreur
     }
   }
@@ -2733,14 +3158,14 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       administration: administrationAttacheController.text,
       ministere: ministereController.text,
       entreprise: entrepriseController.text,
-      photoJointe: photo != null ? "Oui" : "Non",
-      carteIdJointe: carteId != null ? "Oui" : "Non",
-      lettreMotivationJointe: lettreMotivation != null ? "Oui" : "Non",
-      cvJoint: cv != null ? "Oui" : "Non",
-      diplomeFichierJoint: diplomeFichier != null ? "Oui" : "Non",
-      aptitudeFichierJoint: aptitudeFichier != null ? "Oui" : "Non",
-      releveNotesJoint: releveNotes != null ? "Oui" : "Non",
-      acteAdmissionJoint: acteAdmission != null ? "Oui" : "Non",
+      photoJointe: photo != null ? photo!.path.split('/').last : "Non fourni",
+      carteIdJointe: carteId != null ? carteId!.path.split('/').last : "Non fourni",
+      lettreMotivationJointe: lettreMotivation != null ? lettreMotivation!.path.split('/').last : "Non fourni",
+      cvJoint: cv != null ? cv!.path.split('/').last : "Non fourni",
+      diplomeFichierJoint: diplomeFichier != null ? diplomeFichier!.path.split('/').last : "Non fourni",
+      aptitudeFichierJoint: aptitudeFichier != null ? aptitudeFichier!.path.split('/').last : "Non fourni",
+      releveNotesJoint: releveNotes != null ? releveNotes!.path.split('/').last : "Non fourni",
+      acteAdmissionJoint: acteAdmission != null ? acteAdmission!.path.split('/').last : "Non fourni",
       dateSoumission: dateFormatted,
       heureSoumission: timeFormatted,
       numero: numeroCandidat, // Numéro de candidat récupéré de l'API
@@ -2856,5 +3281,68 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
         ),
       ),
     );
+  }
+
+  /// Partage un PDF existant depuis son chemin de fichier
+  Future<void> _shareExistingPdf(String filePath) async {
+    try {
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Candidature ENA',
+        text: 'Voici ma fiche de candidature pour l\'École Nationale d\'Administration.',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur lors du partage du PDF: $e',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Partage le PDF à partir des bytes
+  Future<void> _sharePdfFromBytes(PdfResult result) async {
+    try {
+      if (result.bytes != null && result.data != null) {
+        // Créer un fichier temporaire
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File('${tempDir.path}/${result.suggestedFileName}');
+        await tempFile.writeAsBytes(result.bytes!);
+        
+        // Partager le fichier
+        await Share.shareXFiles(
+          [XFile(tempFile.path)],
+          subject: 'Candidature ENA - ${result.data!.nom} ${result.data!.postnom}',
+          text: 'Voici ma fiche de candidature pour l\'École Nationale d\'Administration.',
+        );
+        
+        // Nettoyer le fichier temporaire après un délai
+        Future.delayed(const Duration(seconds: 10), () {
+          tempFile.delete().catchError((_) => tempFile);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur lors du partage du PDF: $e',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 }

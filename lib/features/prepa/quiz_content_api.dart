@@ -87,8 +87,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
             selectedModule = availableModules.first;
           }
         });
-        
-        print('✅ Quiz data loaded: ${availableModules.length} modules');
+
       } else {
         setState(() {
           isLoadingData = false;
@@ -120,10 +119,8 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
       userAnswers.clear();
       quizStartTime = DateTime.now();
     });
-    
-    print('🎯 Quiz démarré: ${selectedModule!.title}');
-    print('📝 Nombre de questions: ${selectedModule!.questions.length}');
-    
+
+
     _startTimer();
   }
 
@@ -176,8 +173,6 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
     );
     userAnswers.add(userAnswer);
 
-    print('📝 Question ${currentQuestionIndex + 1}: ${isCorrect ? "✅ Correct" : "❌ Incorrect"}');
-
     // Attendre 2 secondes avant la question suivante
     Future.delayed(const Duration(seconds: 2), () {
       _nextQuestion();
@@ -219,10 +214,8 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
     setState(() {
       quizCompleted = true;
     });
-    
-    print('🎉 Quiz terminé!');
-    print('📊 Score: $score/${selectedModule!.questions.length}');
-    print('🏆 Pourcentage: ${quizResult.percentage.toStringAsFixed(1)}%');
+
+
     
     // Optionnel : soumettre les résultats à l'API
     _submitQuizResults(quizResult);
@@ -236,12 +229,12 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
       );
       
       if (submitResult['success'] == true) {
-        print('✅ Résultats soumis avec succès');
+
       } else {
-        print('⚠️ Erreur lors de la soumission: ${submitResult['error']}');
+
       }
     } catch (e) {
-      print('❌ Exception lors de la soumission: $e');
+
     }
   }
 
@@ -385,7 +378,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
                 'Testez vos connaissances avec nos modules de quiz',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 32),
@@ -471,7 +464,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
                       _filterModulesByLevel();
                     });
                   },
-                  selectedColor: theme.colorScheme.primary.withOpacity(0.2),
+                  selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
                   checkmarkColor: theme.colorScheme.primary,
                 );
               }).toList(),
@@ -501,7 +494,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
                   'Aucun module disponible pour ce niveau',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -516,7 +509,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
     
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      color: isSelected ? theme.colorScheme.primary.withOpacity(0.1) : null,
+      color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.1) : null,
       child: ListTile(
         title: Text(
           module.title,
@@ -581,7 +574,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
               module.description,
               style: GoogleFonts.poppins(
                 fontSize: 14,
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 16),
@@ -616,7 +609,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
             label,
             style: GoogleFonts.poppins(
               fontSize: 12,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -693,7 +686,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
               // Barre de progression
               LinearProgressIndicator(
                 value: progress,
-                backgroundColor: theme.colorScheme.onSurface.withOpacity(0.2),
+                backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.2),
                 valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
               ),
               const SizedBox(height: 32),
@@ -734,8 +727,8 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
               if (answerSubmitted && currentQuestion.explanation.isNotEmpty) ...[
                 Card(
                   color: selectedAnswerIndex == currentQuestion.correctOption 
-                      ? Colors.green.withOpacity(0.1) 
-                      : Colors.red.withOpacity(0.1),
+                      ? Colors.green.withValues(alpha: 0.1) 
+                      : Colors.red.withValues(alpha: 0.1),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -802,7 +795,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
         icon = Icons.close;
       }
     } else if (selectedAnswerIndex == index) {
-      backgroundColor = theme.colorScheme.primary.withOpacity(0.2);
+      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.2);
       textColor = theme.colorScheme.primary;
     }
     
@@ -822,7 +815,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
               border: Border.all(
                 color: backgroundColor != null 
                     ? Colors.transparent 
-                    : theme.colorScheme.onSurface.withOpacity(0.2),
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.2),
               ),
             ),
             child: Row(
@@ -836,7 +829,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
                     border: Border.all(
                       color: backgroundColor != null 
                           ? Colors.transparent 
-                          : theme.colorScheme.onSurface.withOpacity(0.3),
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
                   ),
                   child: icon != null 
@@ -915,7 +908,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
                         module.title,
                         style: GoogleFonts.poppins(
                           fontSize: 18,
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -940,7 +933,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
                               const SizedBox(height: 16),
                               LinearProgressIndicator(
                                 value: percentage / 100,
-                                backgroundColor: theme.colorScheme.onSurface.withOpacity(0.2),
+                                backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.2),
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   percentage >= 70 ? Colors.green : Colors.orange,
                                 ),
@@ -979,8 +972,8 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
                           color: answer.isCorrect 
-                              ? Colors.green.withOpacity(0.1) 
-                              : Colors.red.withOpacity(0.1),
+                              ? Colors.green.withValues(alpha: 0.1) 
+                              : Colors.red.withValues(alpha: 0.1),
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: answer.isCorrect ? Colors.green : Colors.red,
@@ -1083,7 +1076,7 @@ class _QuizContentWithApiState extends State<QuizContentWithApi>
           label,
           style: GoogleFonts.poppins(
             fontSize: 14,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ],

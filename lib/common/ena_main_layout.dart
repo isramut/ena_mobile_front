@@ -12,6 +12,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/draggable_chat_button.dart';
 import 'mobile_platform_config.dart';
+import '../utils/app_navigator.dart';
+import '../services/transition_preferences_service.dart';
+import '../widgets/page_transitions.dart';
 
 // URLs réseaux sociaux
 const String facebookUrl = 'https://www.facebook.com/ENARDCOfficiel';
@@ -54,11 +57,17 @@ class _EnaMainLayoutState extends State<EnaMainLayout> {
   // StreamSubscription pour écouter les mises à jour du profil
   StreamSubscription<ProfileUpdateEvent>? _profileUpdateSubscription;
 
+  // Variables pour les transitions de menu
+  Duration _menuTransitionDuration = const Duration(milliseconds: 300);
+  Curve _menuTransitionCurve = Curves.easeInOut;
+
   @override
   void initState() {
     super.initState();
     // Charger immédiatement depuis le cache puis faire l'appel API en arrière-plan
     _loadUserInfoFromCacheFirst();
+    // Charger les préférences de transition
+    _loadTransitionPreferences();
     // Charger les notifications
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadNotifications();
@@ -67,6 +76,24 @@ class _EnaMainLayoutState extends State<EnaMainLayout> {
     // 🔔 Écouter les mises à jour du profil pour rafraîchir le header
     _profileUpdateSubscription = ProfileUpdateNotificationService()
         .profileUpdateStream.listen(_onProfileUpdated);
+  }
+
+  Future<void> _loadTransitionPreferences() async {
+    try {
+      final preferences = await TransitionPreferencesService.loadTransitionPreferences();
+      setState(() {
+        _menuTransitionDuration = Duration(milliseconds: preferences.durationMs);
+        // Curve selon le type de transition
+        _menuTransitionCurve = switch (preferences.transitionType) {
+          PageTransitionType.fadeAndScale => Curves.easeInOutBack,
+          PageTransitionType.quickSlide => Curves.easeOut,
+          PageTransitionType.formTransition => Curves.easeInOut,
+          _ => Curves.easeInOutCubic,
+        };
+      });
+    } catch (e) {
+      // En cas d'erreur, garder les valeurs par défaut
+    }
   }
 
   Future<void> _loadNotifications() async {
@@ -627,8 +654,18 @@ class _EnaMainLayoutState extends State<EnaMainLayout> {
                     ],
                   ),
                 ),
-                // PAGE CONTENT
-                Expanded(child: widget.pageBuilder(context)),
+                // PAGE CONTENT WITH ANIMATED TRANSITIONS
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: _menuTransitionDuration,
+                    switchInCurve: _menuTransitionCurve,
+                    switchOutCurve: _menuTransitionCurve,
+                    child: Container(
+                      key: ValueKey(widget.selectedIndex),
+                      child: widget.pageBuilder(context),
+                    ),
+                  ),
+                ),
                 // FOOTER - MARGES RÉDUITES
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -692,13 +729,11 @@ class _EnaMainLayoutState extends State<EnaMainLayout> {
     
     // NE PAS recharger lors du changement de selectedIndex
     if (oldWidget.selectedIndex != widget.selectedIndex) {
-      print('📄 Page changed from ${oldWidget.selectedIndex} to ${widget.selectedIndex} - Header NOT refreshed');
       return; // Ne pas recharger le header
     }
     
     // Recharger seulement si changement d'utilisateur ou autre raison critique
     if (oldWidget.notificationCount != widget.notificationCount) {
-      print('🔔 Notification count changed - Refreshing notifications only');
       _loadNotifications(); // Recharger seulement les notifications
     }
   }
@@ -997,10 +1032,9 @@ class _EnaMainLayoutState extends State<EnaMainLayout> {
                         TextButton(
                           onPressed: () {
                             setState(() => _showNotifications = false);
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const NotificationsScreen(),
-                              ),
+                            AppNavigator.push(
+                              context,
+                              const NotificationsScreen(),
                             );
                           },
                           child: Text(
@@ -1180,10 +1214,9 @@ class _EnaMainLayoutState extends State<EnaMainLayout> {
         onTap: () {
           _markNotificationAsRead(notification);
           setState(() => _showNotifications = false);
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const NotificationsScreen(),
-            ),
+          AppNavigator.push(
+            context,
+            const NotificationsScreen(),
           );
         },
       ),
@@ -1348,13 +1381,9 @@ class _EnaMainLayoutState extends State<EnaMainLayout> {
   void _onProfileUpdated(ProfileUpdateEvent event) {
     if (!mounted) return;
     
-    print('🔄 EnaMainLayout: Profile update received');
-    print('   - Event: $event');
-    
     // Si des données visuelles ont été mises à jour, rafraîchir depuis le cache
     if (event.requiresUIRefresh) {
       _loadUserInfoFromCache();
-      print('   - Header UI refreshed from cache');
     }
   }
   

@@ -4,6 +4,7 @@ import 'package:ena_mobile_front/services/auth_api_service.dart';
 import 'package:ena_mobile_front/services/biometric_service.dart';
 import 'package:ena_mobile_front/widgets/error_popup.dart';
 import 'package:ena_mobile_front/widgets/biometric_setup_popup.dart';
+import 'package:ena_mobile_front/widgets/page_transitions.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -42,17 +43,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkBiometricStatus() async {
-    print('DEBUG LOGIN: Checking biometric status...');
-    
     final isEnabled = await BiometricAuthService.isBiometricEnabled();
     final hasCredentials = await BiometricAuthService.hasStoredCredentials();
     final isAvailable = await BiometricAuthService.isBiometricAvailableOnDevice();
     final biometricType = await BiometricAuthService.getPrimaryBiometricType();
-    
-    print('DEBUG LOGIN: isEnabled = $isEnabled');
-    print('DEBUG LOGIN: hasCredentials = $hasCredentials');
-    print('DEBUG LOGIN: isAvailable = $isAvailable');
-    print('DEBUG LOGIN: biometricType = $biometricType');
     
     if (mounted) {
       setState(() {
@@ -61,8 +55,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _biometricAvailable = isEnabled && hasCredentials && isAvailable;
         _biometricType = biometricType;
       });
-      
-      print('DEBUG LOGIN: _biometricAvailable = $_biometricAvailable');
     }
   }
 
@@ -75,15 +67,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result['success'] == true) {
         // VALIDATION DU TOKEN avant navigation
         if (result['token'] != null) {
-          print('DEBUG BIOMETRIC: Validating token...');
-          
           // Test de validation du token avec un appel API simple
           final validationResult = await AuthApiService.getUserInfo(token: result['token']);
           
           if (validationResult['success'] == true) {
             // Token valide - procéder avec la connexion
-            print('DEBUG BIOMETRIC: Token valid, proceeding...');
-            
             final prefs = await SharedPreferences.getInstance();
             await prefs.setBool('isLoggedIn', true);
             await prefs.setString('auth_token', result['token']);
@@ -95,13 +83,15 @@ class _LoginScreenState extends State<LoginScreen> {
             setState(() => _biometricLoading = false);
 
             if (mounted) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const MainRouter()),
+              PageTransitions.pushReplacement(
+                context,
+                const MainRouter(),
+                type: PageTransitionType.fadeThrough,
+                duration: const Duration(milliseconds: 500),
               );
             }
           } else {
             // Token invalide - forcer une nouvelle authentification
-            print('DEBUG BIOMETRIC: Token invalid, forcing fresh login...');
             setState(() => _biometricLoading = false);
             
             // Nettoyer les credentials biométriques invalides
@@ -181,12 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
           final isDeviceSupported = await BiometricAuthService.isBiometricAvailableOnDevice();
           final hasStoredCredentials = await BiometricAuthService.hasStoredCredentials();
           
-          print('DEBUG LOGIN: isDeviceSupported = $isDeviceSupported');
-          print('DEBUG LOGIN: hasStoredCredentials = $hasStoredCredentials');
-          print('DEBUG LOGIN: token available = ${result['token'] != null}');
-          
           if (isDeviceSupported && !hasStoredCredentials && result['token'] != null) {
-            print('DEBUG LOGIN: Showing biometric setup popup');
             await BiometricSetupPopup.show(
               context,
               token: result['token'],
@@ -198,8 +183,11 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
           
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MainRouter()),
+          PageTransitions.pushReplacement(
+            context,
+            const MainRouter(),
+            type: PageTransitionType.fadeThrough,
+            duration: const Duration(milliseconds: 500),
           );
         }
       } else {
@@ -228,9 +216,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _goToRegister() {
-    Navigator.push(
+    PageTransitions.push(
       context,
-      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+      const RegisterScreen(),
+      type: PageTransitionType.slideAndFade,
+      slideDirection: SlideDirection.rightToLeft,
     );
   }
 
@@ -522,12 +512,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Center(
                                     child: TextButton(
                                       onPressed: () {
-                                        Navigator.push(
+                                        PageTransitions.push(
                                           context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const ForgotPasswordScreen(),
-                                          ),
+                                          const ForgotPasswordScreen(),
+                                          type: PageTransitionType.fadeAndScale,
                                         );
                                       },
                                       child: Text(

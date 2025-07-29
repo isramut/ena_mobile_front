@@ -5,6 +5,8 @@ import '../../common/theme_provider.dart';
 import '../auth/modifier_mot_de_passe_screen.dart';
 import '../../services/biometric_service.dart';
 import '../../widgets/error_popup.dart';
+import '../../widgets/page_transitions.dart';
+import 'transition_settings_screen.dart';
 
 class ParametreScreen extends StatefulWidget {
   const ParametreScreen({super.key});
@@ -31,8 +33,7 @@ class _ParametreScreenState extends State<ParametreScreen> {
     setState(() => _loadingBiometric = true);
     
     // Diagnostic complet pour déboguer
-    final diagnosis = await BiometricAuthService.diagnoseBiometric();
-    print('Biometric diagnosis: $diagnosis');
+    await BiometricAuthService.diagnoseBiometric();
     
     final isAvailable = await BiometricAuthService.isBiometricAvailableOnDevice();
     final isEnabled = await BiometricAuthService.isBiometricEnabled();
@@ -315,10 +316,50 @@ class _ParametreScreenState extends State<ParametreScreen> {
                   ),
                 ),
                 onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ModifierMotDePasseScreen(),
-                    ),
+                  PageTransitions.push(
+                    context,
+                    ModifierMotDePasseScreen(),
+                    type: PageTransitionType.slideAndFade,
+                  );
+                },
+                trailing: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Personnaliser les transitions
+            Card(
+              color: theme.colorScheme.surface,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: ListTile(
+                leading: Icon(Icons.tune, color: accentBlue),
+                title: Text(
+                  "Personnaliser les transitions",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+                subtitle: Text(
+                  "Configurez les animations selon vos préférences",
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
+                ),
+                onTap: () {
+                  PageTransitions.push(
+                    context,
+                    const TransitionSettingsScreen(),
+                    type: PageTransitionType.slideAndFade,
                   );
                 },
                 trailing: Icon(

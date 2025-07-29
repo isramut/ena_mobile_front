@@ -7,6 +7,9 @@ import 'dart:convert';
 import '../../widgets/ena_twitter_widget.dart';
 import '../../services/auth_api_service.dart';
 import '../../services/program_events_api_service.dart';
+import '../../services/profile_update_notification_service.dart';
+import '../../utils/app_navigator.dart';
+import '../../services/image_cache_service.dart';
 import '../../models/user_info.dart';
 import '../../models/candidature_info.dart';
 import '../../models/notification.dart';
@@ -40,8 +43,52 @@ class _AccueilScreenState extends State<AccueilScreen> {
     _loadUserInfoWithCache();
   }
 
-  /// 🚀 CHARGEMENT SYNCHRONISÉ : Cache agressif + données en parallèle
-  Future<void> _loadUserInfoWithCache() async {
+  /// � PULL-TO-REFRESH : Recharge complète des données et invalidation du cache
+  Future<void> _refreshHomeData() async {
+    if (!mounted) return;
+    
+    try {
+      // 1️⃣ Invalider tous les caches
+      await _invalidateAllCaches();
+      
+      // 2️⃣ Notifier le header via ProfileUpdateNotificationService pour recharger l'avatar et les données utilisateur
+      ProfileUpdateNotificationService().notifyProfileUpdated(
+        photoUpdated: true,
+        personalInfoUpdated: true,
+        contactInfoUpdated: true,
+      );
+      
+      // 3️⃣ Recharger toutes les données depuis l'API (forcer le refresh)
+      await _loadUserInfoWithCache(forceRefresh: true);
+      
+    } catch (e) {
+      
+      // En cas d'erreur, essayer de recharger normalement
+      await _loadUserInfoWithCache();
+    }
+  }
+  
+  /// Invalide tous les caches pour forcer un rechargement complet
+  Future<void> _invalidateAllCaches() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Supprimer les caches principaux
+      await Future.wait([
+        prefs.remove('user_info_cache'),
+        prefs.remove('notifications_cache'),
+        prefs.remove('candidature_cache'),
+        prefs.remove('program_events_cache'),
+      ]);
+      
+      // Invalider le cache d'images pour recharger les photos de profil
+      ImageCacheService.invalidateUserImageCache();
+    } catch (e) {
+    }
+  }
+
+  /// �🚀 CHARGEMENT SYNCHRONISÉ : Cache agressif + données en parallèle
+  Future<void> _loadUserInfoWithCache({bool forceRefresh = false}) async {
     if (!mounted) return;
     
     setState(() => _isLoading = true);
@@ -55,10 +102,10 @@ class _AccueilScreenState extends State<AccueilScreen> {
         return;
       }
 
-      print('🚀 Loading dashboard data synchronously...');
-
-      // 1️⃣ AFFICHAGE IMMÉDIAT DEPUIS LE CACHE
-      await _showFromCache();
+      // 1️⃣ AFFICHAGE IMMÉDIAT DEPUIS LE CACHE (sauf si refresh forcé)
+      if (!forceRefresh) {
+        await _showFromCache();
+      }
 
       // 2️⃣ CHARGEMENT PARALLÈLE DES DONNÉES UTILISATEUR ET NOTIFICATIONS
       final results = await Future.wait([
@@ -81,28 +128,18 @@ class _AccueilScreenState extends State<AccueilScreen> {
         // 4️⃣ CHARGEMENT CONDITIONNEL DE LA CANDIDATURE
         CandidatureInfo? candidatureInfo;
         if (userInfo.hasApplied) {
-          print('🔍 Utilisateur a postulé (has_applied = true), récupération du statut de candidature...');
-          print('👤 ID utilisateur connecté: ${userInfo.id}');
-          
           final candidatureResult = await AuthApiService.getCandidatureStatut(token: token);
-          print('📡 Réponse API candidature: success = ${candidatureResult['success']}, data = ${candidatureResult['data'] != null ? 'présent' : 'null'}');
           
           if (candidatureResult['success'] == true && candidatureResult['data'] != null) {
             final candidature = CandidatureInfo.fromJson(candidatureResult['data']);
-            print('🔗 Vérification jointure: user.id = ${userInfo.id}, candidature.candidat = ${candidature.candidat}');
-            
             // JOINTURE : Vérifier que l'utilisateur connecté correspond au candidat de la candidature
             if (candidature.candidat == userInfo.id) {
               candidatureInfo = candidature;
-              print('✅ Jointure validée ! Candidature chargée : statut = ${candidatureInfo.statut}, date = ${candidatureInfo.dateCreation}');
             } else {
-              print('❌ Jointure échouée ! Cette candidature n\'appartient pas à l\'utilisateur connecté');
             }
           } else {
-            print('❌ Erreur lors de la récupération de la candidature: ${candidatureResult['error'] ?? 'Erreur inconnue'}');
           }
         } else {
-          print('ℹ️ Utilisateur n\'a pas encore postulé (has_applied = false)');
         }
 
         // Notifications
@@ -117,11 +154,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
         List<ProgramEvent> programEvents = [];
         if (eventsResult['success'] == true && eventsResult['data'] != null) {
           programEvents = eventsResult['data'] as List<ProgramEvent>;
-          print('✅ Program events loaded in cache: ${programEvents.length} events');
         }
 
         // 5️⃣ MISE À JOUR SYNCHRONE DE TOUTE L'INTERFACE
-        print('🔄 Mise à jour de l\'état: has_applied = ${userInfo.hasApplied}, candidatureInfo = ${candidatureInfo != null ? 'présent (statut: ${candidatureInfo.statut})' : 'null'}');
         setState(() {
           _userInfo = userInfo;
           _hasApplied = userInfo.hasApplied;
@@ -133,17 +168,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
         // Mettre à jour le cache
         await _updateCache(userInfoResult['data'], notifications, candidatureInfo, programEvents);
-        
-        print('✅ Dashboard fully loaded and synchronized');
       } else {
-        print('❌ Dashboard loading failed');
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('🔴 Error loading dashboard: $e');
-      
       // Fallback: essayer de charger les données une par une
-      print('🔄 Trying fallback loading method...');
       await _loadUserInfoFallback();
       
       if (mounted) {
@@ -179,14 +208,10 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
           // Étape 3: Si l'utilisateur a postulé, récupérer les détails de candidature
           if (hasApplied) {
-            print('🔍 Utilisateur a postulé (fallback), récupération du statut de candidature...');
-            print('👤 ID utilisateur connecté (fallback): ${userInfo.id}');
-            
             final candidatureResult = await AuthApiService.getCandidatureStatut(token: token);
             
             if (mounted && candidatureResult['success'] == true && candidatureResult['data'] != null) {
               final candidature = CandidatureInfo.fromJson(candidatureResult['data']);
-              print('🔗 Vérification jointure (fallback): user.id = ${userInfo.id}, candidature.candidat = ${candidature.candidat}');
               
               // JOINTURE : Vérifier que l'utilisateur connecté correspond au candidat de la candidature
               if (candidature.candidat == userInfo.id) {
@@ -194,13 +219,10 @@ class _AccueilScreenState extends State<AccueilScreen> {
                   _candidatureInfo = candidature;
                   _isLoading = false;
                 });
-                print('✅ Jointure validée (fallback) ! Candidature chargée : statut = ${candidature.statut}');
               } else {
-                print('❌ Jointure échouée (fallback) ! Cette candidature n\'appartient pas à l\'utilisateur connecté');
                 setState(() => _isLoading = false);
               }
             } else {
-              print('❌ Erreur lors de la récupération de la candidature (fallback)');
               setState(() => _isLoading = false);
             }
           } else {
@@ -248,9 +270,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
             _programEvents = result['data'] as List<ProgramEvent>;
             _isLoadingEvents = false;
           });
-          print('✅ Program events loaded for home: ${_programEvents.length} events');
         } else {
-          print('❌ Failed to load program events: ${result['error']}');
           setState(() {
             _programEvents = [];
             _isLoadingEvents = false;
@@ -258,7 +278,6 @@ class _AccueilScreenState extends State<AccueilScreen> {
         }
       }
     } catch (e) {
-      print('❌ Exception loading program events: $e');
       if (mounted) {
         setState(() {
           _programEvents = [];
@@ -297,34 +316,26 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
   // Méthodes utilitaires pour la gestion dynamique de la candidature selon les spécifications métier
   double _getProgressValue() {
-    print('📊 _getProgressValue: has_applied = $_hasApplied, candidatureInfo = ${_candidatureInfo != null ? 'présent (statut: ${_candidatureInfo!.statut})' : 'null'}');
-    
     // Si has_applied = false : progressbar = 0%
     if (!_hasApplied) {
-      print('📊 Retour: 0% (has_applied = false)');
       return 0.0;
     }
 
     // Si has_applied = true mais pas de candidature trouvée (attente du chargement)
     if (_candidatureInfo == null) {
-      print('📊 Retour: 0% (candidatureInfo = null, en attente)');
       return 0.0;
     }
 
     // Si has_applied = true et candidature récupérée, on se base sur le statut
     switch (_candidatureInfo!.statut) {
       case 'envoye':
-        print('📊 Retour: 20% (statut = envoye)');
         return 0.2; // 20%
       case 'en_traitement':
-        print('📊 Retour: 70% (statut = en_traitement)');
         return 0.7; // 70%
       case 'valide':
       case 'rejete':
-        print('📊 Retour: 100% (statut = ${_candidatureInfo!.statut})');
         return 1.0; // 100%
       default:
-        print('📊 Retour: 20% (statut = ${_candidatureInfo!.statut}, par défaut)');
         return 0.2; // Par défaut 20%
     }
   }
@@ -389,10 +400,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
   }
 
   void _navigateToRecours() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const RecoursScreen(),
-      ),
+    AppNavigator.push(
+      context,
+      const RecoursScreen(),
     );
   }
 
@@ -440,10 +450,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
   void _showNotificationDialog(NotificationModel? notification) {
     // Si aucune notification spécifique, rediriger directement vers la page notifications
     if (notification == null) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => const NotificationsScreen(),
-        ),
+      AppNavigator.push(
+        context,
+        const NotificationsScreen(),
       );
       return;
     }
@@ -512,10 +521,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
                       onPressed: () {
                         Navigator.of(context).pop();
                         // Navigation vers la page des notifications
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const NotificationsScreen(),
-                          ),
+                        AppNavigator.push(
+                          context,
+                          const NotificationsScreen(),
                         );
                       },
                       child: Text(
@@ -574,7 +582,6 @@ class _AccueilScreenState extends State<AccueilScreen> {
         _notifications = notifications;
       });
     } catch (e) {
-      print('❌ Error processing notifications: $e');
     }
   }
 
@@ -593,8 +600,6 @@ class _AccueilScreenState extends State<AccueilScreen> {
           _userInfo = userInfo;
           _hasApplied = userInfo.hasApplied;
         });
-        
-        print('📱 User info displayed from cache');
       }
       
       // Cache notifications
@@ -606,8 +611,6 @@ class _AccueilScreenState extends State<AccueilScreen> {
         setState(() {
           _notifications = notifications;
         });
-        
-        print('🔔 Notifications displayed from cache');
       }
       
       // Cache candidature
@@ -620,12 +623,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
           setState(() {
             _candidatureInfo = candidatureInfo;
           });
-          
-          print('📋 Candidature displayed from cache');
         }
       }
     } catch (e) {
-      print('⚠️ Error reading from cache: $e');
     }
   }
 
@@ -639,7 +639,6 @@ class _AccueilScreenState extends State<AccueilScreen> {
       }
       return [];
     } catch (e) {
-      print('⚠️ Error parsing notifications: $e');
       return [];
     }
   }
@@ -696,10 +695,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
         'is_active': e.isActive,
       }).toList();
       await prefs.setString('program_events_cache', json.encode(eventsJson));
-      
-      print('💾 All caches updated successfully');
     } catch (e) {
-      print('⚠️ Error updating cache: $e');
     }
   }
 
@@ -721,10 +717,17 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
     return Padding(
       padding: EdgeInsets.all(horizontalPadding),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, // Assurer que tous les enfants prennent toute la largeur
-          children: [
+      child: RefreshIndicator(
+        onRefresh: _refreshHomeData,
+        color: theme.colorScheme.primary,
+        backgroundColor: theme.colorScheme.surface,
+        strokeWidth: 2.5,
+        displacement: 40.0,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(), // Assure que le scroll est toujours possible pour le pull-to-refresh
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, // Assurer que tous les enfants prennent toute la largeur
+            children: [
             // Bandeau d'accueil
             Card(
               elevation: 6,
@@ -853,6 +856,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -1609,7 +1613,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                   vertical: isVeryNarrowScreen ? 1 : 2,
                 ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: statusColor, width: 0.5),
                 ),
@@ -1630,7 +1634,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
             child: Text(
               "📅 ${event.formattedPeriod}",
               style: GoogleFonts.poppins(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontSize: isVeryNarrowScreen ? 9 : 10,
                 fontWeight: FontWeight.w400,
               ),

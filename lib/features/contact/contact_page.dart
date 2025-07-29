@@ -53,12 +53,49 @@ class _ContactPageState extends State<ContactPage> {
   void _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => loading = true);
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => loading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Votre message a bien été envoyé. Merci !")),
+    
+    // Construire le corps du message avec le nom en bas
+    String emailBody = message;
+    if (name.isNotEmpty) {
+      emailBody += '\n\n$name';
+    }
+    
+    // Encoder les paramètres pour l'URL mailto
+    final encodedSubject = Uri.encodeComponent(subject);
+    final encodedBody = Uri.encodeComponent(emailBody);
+    final encodedFrom = Uri.encodeComponent(email);
+    
+    // Construire l'URL mailto avec tous les paramètres
+    final url = Uri.parse(
+      'mailto:info@ena.cd?subject=$encodedSubject&body=$encodedBody&from=$encodedFrom'
     );
-    _formKey.currentState?.reset();
+    
+    try {
+      if (await launchUrl(url)) {
+        setState(() => loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Application email ouverte avec succès !")),
+        );
+        _formKey.currentState?.reset();
+        // Réinitialiser les variables
+        setState(() {
+          name = '';
+          email = '';
+          subject = '';
+          message = '';
+        });
+      } else {
+        throw Exception('Impossible d\'ouvrir l\'application email');
+      }
+    } catch (e) {
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Impossible d'ouvrir votre application email. Veuillez vérifier qu'une application email est installée."),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override
@@ -148,7 +185,7 @@ class _ContactPageState extends State<ContactPage> {
               child: ListTile(
                 leading: Icon(Icons.email_rounded, color: mainBlue, size: 26),
                 title: Text(
-                  "contact@ena.cd",
+                  "info@ena.cd",
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w500,
                     fontSize: 15,
@@ -173,7 +210,7 @@ class _ContactPageState extends State<ContactPage> {
               child: ListTile(
                 leading: Icon(Icons.phone_rounded, color: mainBlue, size: 27),
                 title: Text(
-                  "+243 812 345 678",
+                  "+243 832 222 920",
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w500,
                     fontSize: 15,
@@ -213,11 +250,20 @@ class _ContactPageState extends State<ContactPage> {
                           fontSize: 18,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Remplissez le formulaire ci-dessous. Cliquer sur 'Envoyer' ouvrira votre application email avec les informations pré-remplies.",
+                        style: GoogleFonts.poppins(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                          fontSize: 13,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 15),
                       // Nom
                       TextFormField(
                         decoration: InputDecoration(
-                          labelText: "Nom complet",
+                          labelText: "Nom complet (optionnel)",
                           labelStyle: TextStyle(
                             color: theme.colorScheme.onSurface.withValues(
                               alpha: 0.7,
@@ -236,8 +282,7 @@ class _ContactPageState extends State<ContactPage> {
                           ),
                         ),
                         onChanged: (v) => name = v,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? "Champ obligatoire" : null,
+                        validator: null, // Pas de validation car optionnel
                       ),
                       const SizedBox(height: 15),
 
@@ -339,7 +384,7 @@ class _ContactPageState extends State<ContactPage> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          icon: const Icon(Icons.send_rounded),
+                          icon: const Icon(Icons.email_outlined),
                           label: loading
                               ? const SizedBox(
                                   width: 20,

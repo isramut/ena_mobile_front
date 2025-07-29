@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../features/chat/ena_mwinda_chat_page.dart';
+import 'page_transitions.dart';
 
 class DraggableChatButton extends StatefulWidget {
   const DraggableChatButton({super.key});
@@ -55,9 +56,11 @@ class _DraggableChatButtonState extends State<DraggableChatButton>
   }
 
   void _openFullChat() {
-    Navigator.push(
+    PageTransitions.push(
       context,
-      MaterialPageRoute(builder: (context) => const EnaMwindaChatPage()),
+      const EnaMwindaChatPage(),
+      type: PageTransitionType.slideAndFade,
+      slideDirection: SlideDirection.bottomToTop,
     );
   }
 

@@ -3,6 +3,17 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
+}
+
+// Configuration de la signature
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -38,13 +49,21 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = file(keystoreProperties["storeFile"] as String)
+            storePassword = keystoreProperties["storePassword"] as String
+        }
+    }
+
     buildTypes {
         release {
             // Configuration pour la release en production
-            signingConfig = signingConfigs.getByName("debug") // TODO: Remplacer par la vraie signature
-            // Désactivé temporairement pour éviter les problèmes de minification
-            // isMinifyEnabled = true 
-            // isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true 
+            isShrinkResources = true
         }
         debug {
             // Configuration pour le développement

@@ -26,10 +26,10 @@ class BiometricAuthService {
   static Future<bool> isDeviceSupported() async {
     try {
       final result = await _localAuth.canCheckBiometrics;
-      print('DEBUG: canCheckBiometrics = $result');
+
       return result;
     } catch (e) {
-      print('DEBUG: isDeviceSupported error = $e');
+
       return false;
     }
   }
@@ -39,13 +39,13 @@ class BiometricAuthService {
     try {
       if (await isDeviceSupported()) {
         final biometrics = await _localAuth.getAvailableBiometrics();
-        print('DEBUG: availableBiometrics = $biometrics');
+
         return biometrics;
       }
-      print('DEBUG: Device not supported');
+
       return [];
     } catch (e) {
-      print('DEBUG: getAvailableBiometrics error = $e');
+
       return [];
     }
   }
@@ -65,26 +65,24 @@ class BiometricAuthService {
         // Enregistrer l'utilisateur qui active la biométrie
         final currentUserEmail = await getCurrentUserEmail();
         if (currentUserEmail == null) {
-          print('DEBUG: Cannot enable biometric - no current user');
+
           return false;
         }
         
         await prefs.setBool(_biometricEnabledKey, true);
         await prefs.setString(_biometricUserKey, currentUserEmail);
-        
-        print('DEBUG: Biometric enabled for user: $currentUserEmail');
+
       } else {
         // Si on désactive, supprimer les données sécurisées ET l'association utilisateur
         await prefs.setBool(_biometricEnabledKey, false);
         await prefs.remove(_biometricUserKey);
         await _clearSecureData();
-        
-        print('DEBUG: Biometric disabled and user association cleared');
+
       }
       
       return true;
     } catch (e) {
-      print('DEBUG: setBiometricEnabled error = $e');
+
       return false;
     }
   }
@@ -109,10 +107,10 @@ class BiometricAuthService {
     try {
       // Utiliser le test de compatibilité pour Android 11 et versions antérieures
       final isCompatible = await testAuthCompatibility();
-      print('DEBUG: isBiometricAvailableOnDevice result = $isCompatible');
+
       return isCompatible;
     } catch (e) {
-      print('DEBUG: isBiometricAvailableOnDevice error = $e');
+
       return false;
     }
   }
@@ -145,12 +143,10 @@ class BiometricAuthService {
       
       // Test 6: État actuel dans l'app
       diagnosis['isBiometricEnabledInApp'] = await isBiometricEnabled();
-      
-      print('DEBUG: Full biometric diagnosis = $diagnosis');
-      
+
     } catch (e) {
       diagnosis['error'] = e.toString();
-      print('DEBUG: Diagnosis error = $e');
+
     }
     
     return diagnosis;
@@ -280,9 +276,7 @@ class BiometricAuthService {
       }
 
       final String biometricType = await getPrimaryBiometricType();
-      
-      print('🔄 Starting biometric authentication with preload...');
-      
+
       // 🚀 LANCER LE PRÉ-CHARGEMENT EN PARALLÈLE avec l'authentification
       AuthApiService.preloadDuringAuth(token: storedToken);
       
@@ -297,8 +291,7 @@ class BiometricAuthService {
 
       if (authenticated) {
         // L'authentification a réussi, le pré-chargement continue en arrière-plan
-        print('✅ Biometric authentication successful, preload running in background');
-        
+
         return {
           'success': true,
           'token': storedToken,
@@ -348,12 +341,10 @@ class BiometricAuthService {
             errorMessage = 'Erreur d\'authentification : ${e.message ?? 'Erreur inconnue'}';
           }
       }
-      
-      print('DEBUG: PlatformException in authenticateForLogin:');
-      print('Code: ${e.code}');
-      print('Message: ${e.message}');
-      print('Resolved message: $errorMessage');
-      
+
+
+
+
       return {
         'success': false,
         'error': errorMessage,
@@ -386,16 +377,13 @@ class BiometricAuthService {
     try {
       final storedToken = await _secureStorage.read(key: _secureTokenKey);
       final storedEmail = await _secureStorage.read(key: _userEmailKey);
-      
-      print('DEBUG: hasStoredCredentials - token: ${storedToken != null ? 'YES' : 'NO'}');
-      print('DEBUG: hasStoredCredentials - email: ${storedEmail != null ? 'YES' : 'NO'}');
-      
+
+
       final result = storedToken != null && storedEmail != null;
-      print('DEBUG: hasStoredCredentials - result: $result');
-      
+
       return result;
     } catch (e) {
-      print('DEBUG: hasStoredCredentials - error: $e');
+
       return false;
     }
   }
@@ -403,35 +391,31 @@ class BiometricAuthService {
   /// Test spécifique pour la compatibilité avec les anciennes versions Android
   static Future<bool> testAuthCompatibility() async {
     try {
-      print('DEBUG: Testing auth compatibility...');
-      
+
       // Test simple sans vraiment authentifier
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       final canCheckBiometrics = await _localAuth.canCheckBiometrics;
       final availableBiometrics = await getAvailableBiometrics();
-      
-      print('DEBUG: Compatibility test results:');
-      print('- isDeviceSupported: $isDeviceSupported');
-      print('- canCheckBiometrics: $canCheckBiometrics');
-      print('- availableBiometrics: $availableBiometrics');
-      
+
+
+
+
       // Si on a des vraies biométries, ça marche
       if (availableBiometrics.isNotEmpty) {
-        print('DEBUG: Has real biometrics, should work');
+
         return true;
       }
       
       // Si l'appareil dit qu'il supporte mais pas de vraies biométries,
       // cela signifie probablement PIN/schéma disponible
       if (isDeviceSupported && canCheckBiometrics) {
-        print('DEBUG: Device supports auth but no biometrics, probably has PIN/pattern');
+
         return true;
       }
-      
-      print('DEBUG: Compatibility test failed');
+
       return false;
     } catch (e) {
-      print('DEBUG: Compatibility test error: $e');
+
       return false;
     }
   }
@@ -442,7 +426,7 @@ class BiometricAuthService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString('user_email'); // ou toute autre clé utilisée pour stocker l'email courant
     } catch (e) {
-      print('DEBUG: getCurrentUserEmail error = $e');
+
       return null;
     }
   }
@@ -452,7 +436,7 @@ class BiometricAuthService {
     try {
       final currentUserEmail = await getCurrentUserEmail();
       if (currentUserEmail == null) {
-        print('DEBUG: No current user, biometric disabled');
+
         return false;
       }
 
@@ -460,21 +444,19 @@ class BiometricAuthService {
       final isGenerallyEnabled = prefs.getBool(_biometricEnabledKey) ?? false;
       
       if (!isGenerallyEnabled) {
-        print('DEBUG: Biometric not generally enabled');
+
         return false;
       }
 
       // Vérifier si c'est le même utilisateur qui a activé la biométrie
       final biometricUserEmail = prefs.getString(_biometricUserKey);
       final isSameUser = biometricUserEmail == currentUserEmail;
-      
-      print('DEBUG: Biometric user: $biometricUserEmail');
-      print('DEBUG: Current user: $currentUserEmail');
-      print('DEBUG: Is same user: $isSameUser');
-      
+
+
+
       return isSameUser;
     } catch (e) {
-      print('DEBUG: isBiometricEnabledForCurrentUser error = $e');
+
       return false;
     }
   }
@@ -485,10 +467,9 @@ class BiometricAuthService {
       // NE PAS supprimer les credentials sécurisés lors du logout
       // Cela permet à l'utilisateur de se reconnecter directement avec la biométrie
       // Les credentials sont préservés pour permettre la reconnexion biométrique
-      
-      print('DEBUG: User logged out - biometric credentials preserved for reconnection');
+
     } catch (e) {
-      print('DEBUG: handleUserLogout error = $e');
+
     }
   }
 
@@ -498,22 +479,19 @@ class BiometricAuthService {
       final currentUserEmail = await getCurrentUserEmail();
       final prefs = await SharedPreferences.getInstance();
       final biometricUserEmail = prefs.getString(_biometricUserKey);
-      
-      print('DEBUG: Checking user change:');
-      print('- Current user: $currentUserEmail');
-      print('- Biometric user: $biometricUserEmail');
-      
+
+
+
       // Si l'utilisateur a changé, désactiver la biométrie ET supprimer les credentials
       if (biometricUserEmail != null && 
           currentUserEmail != null && 
           biometricUserEmail != currentUserEmail) {
-        
-        print('DEBUG: User changed! Disabling biometric and clearing credentials for security');
+
         await setBiometricEnabled(false);
         await _clearSecureData(); // Supprimer les credentials de l'ancien utilisateur
       }
     } catch (e) {
-      print('DEBUG: checkUserChanged error = $e');
+
     }
   }
 }

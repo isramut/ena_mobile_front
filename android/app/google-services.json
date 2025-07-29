@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1075542886455",
+    "project_id": "myena-46528",
+    "storage_bucket": "myena-46528.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1075542886455:android:88c35a822cf872454217b2",
+        "android_client_info": {
+          "package_name": "cd.ena.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHwQVA_wciNBu9tP43vCrW2FhgAjc3rxA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

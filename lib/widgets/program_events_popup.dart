@@ -1,7 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/program_event.dart';
 import '../features/calendar/calendar_screen.dart';
+import '../utils/app_navigator.dart';
+import 'animated_popup.dart';
 
 class ProgramEventsPopup extends StatelessWidget {
   final List<ProgramEvent> events;
@@ -12,9 +15,49 @@ class ProgramEventsPopup extends StatelessWidget {
   });
 
   static void show(BuildContext context, List<ProgramEvent> events) {
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (context) => ProgramEventsPopup(events: events),
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 450),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Material(
+          type: MaterialType.transparency,
+          child: Stack(
+            children: [
+              // BackdropFilter pour flouter l'arrière-plan
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: animation.value * 5.0,
+                    sigmaY: animation.value * 5.0,
+                  ),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: animation.value * 0.1),
+                  ),
+                ),
+              ),
+              // Popup content avec animations
+              Center(
+                child: FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(
+                      begin: 0.9,
+                      end: 1.0,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutBack,
+                    )),
+                    child: ProgramEventsPopup(events: events),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -61,45 +104,48 @@ class ProgramEventsPopup extends StatelessWidget {
   }
 
   Widget _buildHeader(ThemeData theme, BuildContext context, bool isNarrowScreen) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isNarrowScreen ? 16 : 20,
-        vertical: isNarrowScreen ? 16 : 20,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+    return AnimatedPopupChild(
+      delay: const Duration(milliseconds: 100),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isNarrowScreen ? 16 : 20,
+          vertical: isNarrowScreen ? 16 : 20,
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.calendar_month_rounded,
-            color: Colors.white,
-            size: isNarrowScreen ? 24 : 28,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              "Programme & calendrier",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: isNarrowScreen ? 16 : 18,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_month_rounded,
+              color: Colors.white,
+              size: isNarrowScreen ? 24 : 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                "Programme & calendrier",
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: isNarrowScreen ? 16 : 18,
+                ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.close_rounded,
-              color: Colors.white,
+            IconButton(
+              icon: const Icon(
+                Icons.close_rounded,
+                color: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              splashRadius: 20,
             ),
-            onPressed: () => Navigator.of(context).pop(),
-            splashRadius: 20,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -140,15 +186,21 @@ class ProgramEventsPopup extends StatelessWidget {
   }
 
   Widget _buildEventsList(ThemeData theme, bool isNarrowScreen) {
-    return ListView.separated(
-      padding: EdgeInsets.all(isNarrowScreen ? 16 : 20),
-      shrinkWrap: true,
-      itemCount: events.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final event = events[index];
-        return _buildEventCard(event, theme, isNarrowScreen);
-      },
+    return AnimatedPopupChild(
+      delay: const Duration(milliseconds: 200),
+      child: ListView.separated(
+        padding: EdgeInsets.all(isNarrowScreen ? 16 : 20),
+        shrinkWrap: true,
+        itemCount: events.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 16),
+        itemBuilder: (context, index) {
+          final event = events[index];
+          return AnimatedPopupChild(
+            delay: Duration(milliseconds: 250 + (index * 50)),
+            child: _buildEventCard(event, theme, isNarrowScreen),
+          );
+        },
+      ),
     );
   }
 
@@ -276,37 +328,39 @@ class ProgramEventsPopup extends StatelessWidget {
   }
 
   Widget _buildFooterButton(ThemeData theme, BuildContext context, bool isNarrowScreen) {
-    return Container(
-      padding: EdgeInsets.all(isNarrowScreen ? 16 : 20),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.of(context).pop(); // Fermer le popup
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const CalendarScreen(),
+    return AnimatedPopupChild(
+      delay: const Duration(milliseconds: 400),
+      child: Container(
+        padding: EdgeInsets.all(isNarrowScreen ? 16 : 20),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop(); // Fermer le popup
+              AppNavigator.push(
+                context,
+                const CalendarScreen(),
+              );
+            },
+            icon: const Icon(Icons.calendar_view_month_rounded, size: 20),
+            label: Text(
+              "Consulter tout le calendrier",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: isNarrowScreen ? 14 : 15,
               ),
-            );
-          },
-          icon: const Icon(Icons.calendar_view_month_rounded, size: 20),
-          label: Text(
-            "Consulter tout le calendrier",
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              fontSize: isNarrowScreen ? 14 : 15,
             ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(
+                vertical: isNarrowScreen ? 12 : 14,
+              ),
+              elevation: 2,
             ),
-            padding: EdgeInsets.symmetric(
-              vertical: isNarrowScreen ? 12 : 14,
-            ),
-            elevation: 2,
           ),
         ),
       ),

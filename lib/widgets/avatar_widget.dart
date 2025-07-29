@@ -39,11 +39,10 @@ class _UserAvatarState extends State<UserAvatar> {
         !_imageError;
 
     // Debug pour voir l'URL de l'image
-    print('=== AVATAR WIDGET DEBUG ===');
-    print('Profile picture URL: ${widget.userInfo?.fullProfilePictureUrl}');
-    print('Has profile picture: $hasProfilePicture');
-    print('Image error: $_imageError');
-    print('===========================');
+
+
+
+
 
     if (hasProfilePicture) {
       // Utiliser le service de cache-busting
@@ -63,12 +62,11 @@ class _UserAvatarState extends State<UserAvatar> {
             'Expires': '0',
           },
           errorBuilder: (context, error, stackTrace) {
-            print('=== IMAGE LOADING ERROR ===');
-            print('URL: $imageUrl');
-            print('Cache-busted URL: $cacheBustedUrl');
-            print('Exception: $error');
-            print('===========================');
-            
+
+
+
+
+
             if (mounted) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {

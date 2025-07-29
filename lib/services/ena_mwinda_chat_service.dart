@@ -39,8 +39,7 @@ Ma mission est de vous fournir toutes les informations dont vous avez besoin sur
 Dites-moi, que souhaitez-vous savoir ? 🌟''',
   ];
 
-  static const String systemPrompt = '''
-Tu es ENA, l'assistant virtuel officiel de l'École Nationale d'Administration de la République Démocratique du Congo (ENA RDC).
+  static const String systemPrompt = '''Tu es ENA, l'assistant virtuel officiel de l'École Nationale d'Administration de la République Démocratique du Congo (ENA RDC).
 
 🎯 TON RÔLE ET PERSONNALITÉ :
 - Tu es un assistant institutionnel COOL mais PROFESSIONNEL
@@ -48,8 +47,42 @@ Tu es ENA, l'assistant virtuel officiel de l'École Nationale d'Administration d
 - Tu es serviable, courtois et à l'écoute
 - Ton ton est chaleureux mais garde toujours la dignité institutionnelle
 - Tu tutoyes naturellement mais avec respect
+- Tu réponds NATURELLEMENT aux salutations et conversations courantes
+- Tu es CONVERSATIONNEL et HUMAIN dans tes interactions
+- Tu es aussi le GUIDE EXPERT de l'application MyENA
 
-📚 TES CAPACITÉS DE RECHERCHE AVANCÉE :
+💬 RÉPONSES AUX SALUTATIONS ET CONVERSATIONS :
+- Pour "Bonjour" ou "Salut" : Réponds chaleureusement et propose ton aide
+- Pour "Ça va ?" : Réponds de façon amicale et redirige vers l'ENA naturellement
+- Pour "Merci" : Réponds poliment et propose d'autres questions
+- Sois toujours naturel et évite les réponses robotiques
+- EXEMPLE : "Bonjour ! Ça va très bien merci ! 😊 Je suis là pour t'aider avec toutes tes questions sur l'ENA. Que veux-tu savoir ?"
+
+�️ GUIDE DE NAVIGATION MyENA - TON EXPERTISE PRINCIPALE :
+
+**STRUCTURE PRINCIPALE :**
+1. **Accueil** (🏠) - Tableau de bord, profil, notifications, état candidature
+2. **Actualités** (📰) - News ENA, annonces, flux Twitter @EnaRDC_Officiel
+3. **Inscription** (📝) - Candidature, suivi dossier, PDF, recours
+4. **Prépa-ENA** (🎓) - Quiz, préparation concours, ressources
+5. **Contact** (📧) - Infos contact, FAQ, réseaux sociaux
+
+**ÉLÉMENTS D'INTERFACE :**
+- **Avatar** (haut-gauche) → Profil, déconnexion
+- **Cloche 🔔** (haut-droite) → Notifications (badge rouge = non lues)
+- **Menu burger ≡** (haut-droite) → Navigation principale
+- **Chat flottant bleu** → Moi ! Toujours disponible 😊
+
+**FONCTIONNALITÉS CLÉS À EXPLIQUER :**
+- Voir candidature : Onglet "Inscription" → statut et détails
+- Faire recours : "Inscription" → "Faire un recours" → upload Word (5MB max)
+- Quiz prépa : "Prépa-ENA" → choisir matière
+- PDF dossier : "Inscription" → "Télécharger PDF"
+- Changer thème : Menu burger → Paramètres → Mode sombre
+- Notifications : Icône cloche 🔔
+- Modifier profil : Avatar → Profil
+
+�📚 TES CAPACITÉS DE RECHERCHE AVANCÉE :
 - Tu exploites INTELLIGEMMENT les informations des sites officiels ENA
 - Tu SYNTHÉTISES les données trouvées pour donner des réponses PRÉCISES
 - Tu EXTRAIS les informations clés (noms, dates, fonctions) des contenus web
@@ -85,27 +118,28 @@ Tu es ENA, l'assistant virtuel officiel de l'École Nationale d'Administration d
 - Email : info@ena.cd | Tél : +243 832 222 920
 - Adresse : Bât. Fonction Publique, 3e niveau, Gombe, Kinshasa
 
-📋 INFORMATIONS PRIORITAIRES À EXTRAIRE DES SITES :
-- Actualités récentes de la direction
-- Dates importantes (création, événements récents)  
-- Organigramme et structure organisationnelle
-- Programmes de formation actuels
-- Actualités et annonces récentes
-- Procédures de candidature en vigueur
-- Contacts et informations pratiques
+🎮 RÉPONSES DE NAVIGATION - EXEMPLES TYPES :
+- "Où voir mes notes ?" → "Va dans l'onglet **Prépa-ENA** 🎓 pour voir tes résultats de quiz et ton suivi de progression !"
+- "Comment postuler ?" → "Clique sur l'onglet **Inscription** 📝 en bas de l'écran pour accéder au formulaire de candidature !"
+- "Mes notifications ?" → "Clique sur l'icône cloche 🔔 en haut à droite ! Un badge rouge te montre le nombre de notifications non lues."
+- "Changer de thème ?" → "Menu burger ≡ → **Paramètres** → Active le **Mode sombre** selon tes préférences ! 🌙"
 
-⚠️ RÈGLES POUR QUESTIONS HORS-SUJET :
+⚠️ RÈGLES POUR QUESTIONS VRAIMENT HORS-SUJET :
 1. PREMIÈRE question hors ENA : Réponds brièvement ET demande de revenir à l'ENA dans le MÊME message
 2. DEUXIÈME question hors ENA : Ne réponds PAS, demande seulement de parler de l'ENA
 3. Reste toujours courtois et institutionnel
+4. ATTENTION : Les salutations, remerciements et conversation naturelle ne sont JAMAIS hors-sujet !
 
 💬 TON STYLE DE RÉPONSE OPTIMISÉ :
 - Utilise PRIORITAIREMENT les informations récentes des sites officiels
+- Pour la navigation app : Sois PRÉCIS avec les icônes et emplacements
 - Cite tes sources quand tu utilises des données web : "Selon le site officiel..."
 - Donne des réponses précises avec noms exacts, dates, détails
 - Termine par "📍 Pour plus d'informations détaillées, consultez www.ena.cd"
 - Reste concis mais informatif (3-4 phrases max)
 - Évite les répétitions et va à l'essentiel
+- Sois NATUREL et CONVERSATIONNEL
+- Utilise des émojis pour rendre les explications plus claires
 
 🔍 EXEMPLES DE RÉPONSES ATTENDUES AVEC DONNÉES WEB :
 - "Le Directeur Général de l'ENA est Cédrick TOMBOLA MUKE (depuis décembre 2024), économiste et ancien DG de la CNSSAP. Il est assisté de Henry MAHANGU MONGA MAMBILI comme DG Adjoint..."
@@ -114,7 +148,8 @@ Tu es ENA, l'assistant virtuel officiel de l'École Nationale d'Administration d
 
 ❌ NE DIS JAMAIS "je n'ai pas accès à cette information" si des données sont fournies par la recherche web.
 ✅ UTILISE TOUJOURS les informations trouvées pour construire ta réponse de façon CONCISE et PRÉCISE.
-''';
+✅ SOIS NATUREL ET CONVERSATIONNEL dans toutes tes interactions.
+✅ GUIDE EXPERTEMENT les utilisateurs dans l'application MyENA avec des instructions CLAIRES et des émojis.''';
 
   static Future<void> initialize() async {
     _model = GenerativeModel(
@@ -137,6 +172,12 @@ Tu es ENA, l'assistant virtuel officiel de l'École Nationale d'Administration d
     }
 
     try {
+      // D'abord, vérifier si c'est une question de navigation dans l'app
+      final navigationResponse = _checkNavigationQuestion(userMessage);
+      if (navigationResponse != null) {
+        return navigationResponse;
+      }
+
       // Vérifier si la question est hors-sujet
       bool isOffTopic = _isQuestionOffTopic(userMessage);
 
@@ -399,26 +440,89 @@ Revenons plutôt à l'ENA : avez-vous des questions sur nos formations, les proc
   static bool _isQuestionOffTopic(String message) {
     final lowerMessage = message.toLowerCase();
 
+    // Salutations et conversation naturelle - JAMAIS hors-sujet
+    final conversationKeywords = [
+      'bonjour',
+      'bonsoir',
+      'salut',
+      'hello',
+      'hi',
+      'ça va',
+      'comment allez',
+      'comment tu vas',
+      'bonne journée',
+      'bonne soirée',
+      'merci',
+      'mercie',
+      'ok',
+      'okay',
+      'd\'accord',
+      'parfait',
+      'super',
+      'excellent',
+      'bien',
+      'compris',
+      'clair',
+    ];
+
+    // Navigation et utilisation de l'app - JAMAIS hors-sujet
+    final navigationKeywords = [
+      'app',
+      'application',
+      'myena',
+      'naviguer',
+      'navigation',
+      'menu',
+      'onglet',
+      'notification',
+      'profil',
+      'avatar',
+      'candidature',
+      'inscription',
+      'quiz',
+      'prépa',
+      'prepa',
+      'pdf',
+      'télécharger',
+      'recours',
+      'thème',
+      'theme',
+      'paramètre',
+      'chat',
+      'aide',
+      'actualité',
+      'contact',
+      'où',
+      'comment',
+      'guide',
+      'utiliser',
+      'trouve',
+      'cloche',
+      'bouton',
+      'écran',
+      'page',
+    ];
+
+    // Si c'est une conversation naturelle ou navigation, ce n'est PAS hors-sujet
+    if (conversationKeywords.any((keyword) => lowerMessage.contains(keyword)) ||
+        navigationKeywords.any((keyword) => lowerMessage.contains(keyword))) {
+      return false;
+    }
+
     // Mots-clés liés à l'ENA (plus complets)
     final enaKeywords = [
       'ena',
       'école',
       'administration',
       'concours',
-      'candidature',
       'formation',
       'étude',
       'cursus',
       'diplôme',
-      'inscription',
       'calendrier',
       'date',
-      'actualité',
       'nouvelle',
       'annonce',
-      'myena',
-      'application',
-      'profil',
       'dossier',
       'document',
       'directeur',
@@ -446,6 +550,72 @@ Revenons plutôt à l'ENA : avez-vous des questions sur nos formations, les proc
 
   static bool _containsEnaKeywords(String message) {
     return !_isQuestionOffTopic(message);
+  }
+
+  /// Détecte les questions de navigation dans l'application MyENA
+  static String? _checkNavigationQuestion(String message) {
+    final lowerMessage = message.toLowerCase();
+    
+    // Détection des questions de navigation avec réponses directes
+    final navigationPatterns = {
+      // Navigation générale
+      RegExp(r'\b(comment|où|navigation|naviguer|menu|onglet)\b.*\b(app|application|myena)\b'): 
+        'Pour naviguer dans MyENA, utilise le **menu burger ≡** en haut à droite ! 📱\n\nTu as 5 onglets principaux :\n🏠 **Accueil** - Tableau de bord\n📰 **Actualités** - News ENA\n📝 **Inscription** - Candidature\n🎓 **Prépa-ENA** - Quiz\n📧 **Contact** - Infos utiles',
+      
+      // Notifications
+      RegExp(r'\b(notification|notif|cloche|alerte)\b'): 
+        'Tes notifications se trouvent en cliquant sur l\'icône **cloche 🔔** en haut à droite ! 📬\n\nUn badge rouge indique le nombre de notifications non lues. Tu peux les marquer comme lues et les filtrer par type.',
+      
+      // Profil
+      RegExp(r'\b(profil|avatar|photo|compte|déconnect)\b'): 
+        'Pour accéder à ton profil, clique sur ton **avatar** (photo) en haut à gauche ! 👤\n\nTu peux :\n• Modifier tes infos personnelles\n• Changer ta photo\n• Modifier ton mot de passe\n• Te déconnecter',
+      
+      // Candidature/Inscription
+      RegExp(r'\b(candidature|inscription|dossier|postuler|état|statut)\b'): 
+        'Pour voir ta candidature, va dans l\'onglet **Inscription** 📝 en bas de l\'écran !\n\nTu y trouveras :\n• Le statut de ton dossier\n• Tes documents uploadés\n• Le bouton "Télécharger PDF"\n• L\'option "Faire un recours"',
+      
+      // Quiz/Prépa
+      RegExp(r'\b(quiz|prépa|prepa|test|exercice|matière|note|résultat)\b'): 
+        'Pour les quiz de préparation, clique sur **Prépa-ENA** 🎓 !\n\nTu peux :\n• Choisir une matière\n• Faire des quiz interactifs\n• Voir tes résultats\n• Suivre ta progression',
+      
+      // PDF/Téléchargement
+      RegExp(r'\b(pdf|télécharger|download|document)\b'): 
+        'Pour télécharger ton dossier en PDF : **Inscription** 📝 → **"Télécharger PDF"** 📄\n\nLe PDF contient toutes tes informations de candidature et documents uploadés !',
+      
+      // Recours
+      RegExp(r'\b(recours|réclamation|plainte|contester)\b'): 
+        'Pour faire un recours : **Inscription** 📝 → **"Faire un recours"** ⚖️\n\nTu peux uploader des fichiers Word (.doc/.docx) de maximum 5MB pour appuyer ta demande.',
+      
+      // Thème/Paramètres
+      RegExp(r'\b(thème|theme|sombre|clair|paramètre|setting)\b'): 
+        'Pour changer le thème : **Menu burger ≡** → **Paramètres** → **Mode sombre** 🌙\n\nTu peux aussi personnaliser les transitions et notifications !',
+      
+      // Chat/Aide
+      RegExp(r'\b(chat|aide|assistant|bot|ici)\b'): 
+        'Tu me trouves toujours via le **bouton bleu flottant** 💬 présent sur toutes les pages !\n\nJe peux t\'aider avec l\'ENA et te guider dans l\'application. N\'hésite pas à me poser tes questions ! 😊',
+      
+      // Actualités
+      RegExp(r'\b(actualité|actus|news|nouvelle|annonce|twitter)\b'): 
+        'Les actualités ENA sont dans l\'onglet **Actualités** 📰 !\n\nTu y trouveras :\n• Les dernières nouvelles\n• Les annonces officielles\n• Le flux Twitter @EnaRDC_Officiel\n• Photos et vidéos',
+      
+      // Contact
+      RegExp(r'\b(contact|contacter|téléphone|email|adresse)\b'): 
+        'Pour contacter l\'ENA : onglet **Contact** 📧 !\n\nTu y trouveras :\n• Email : info@ena.cd\n• Tél : +243 832 222 920\n• Adresse complète\n• Liens réseaux sociaux\n• FAQ détaillée',
+    };
+    
+    // Recherche de correspondances
+    for (final entry in navigationPatterns.entries) {
+      if (entry.key.hasMatch(lowerMessage)) {
+        return entry.value;
+      }
+    }
+    
+    // Questions très générales sur l'utilisation
+    if (RegExp(r'\b(comment.*utiliser|aide.*app|guide.*app|pas.*trouve)\b').hasMatch(lowerMessage)) {
+      return 'Je suis là pour t\'aider à naviguer dans MyENA ! 🗺️\n\n**Navigation :** Menu burger ≡ pour les 5 onglets principaux\n**Notifications :** Cloche 🔔 en haut à droite\n**Profil :** Avatar en haut à gauche\n**Chat :** Bouton bleu flottant (moi ! 😊)\n\nQue cherches-tu précisément ?';
+    }
+    
+    return null; // Pas une question de navigation
   }
 
   static List<String> _extractKeywords(String query) {

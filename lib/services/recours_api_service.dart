@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
@@ -14,15 +15,14 @@ class RecoursApiService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString('auth_token');
     } catch (e) {
-      print('❌ Erreur lors de la récupération du token: $e');
+
       return null;
     }
   }
 
   /// Récupère tous les recours du candidat connecté
   static Future<Map<String, dynamic>> getMesRecours({String? token}) async {
-    print('📡 Récupération des recours...');
-    
+
     try {
       final authToken = token ?? await _getStoredToken();
       if (authToken == null) {
@@ -33,7 +33,6 @@ class RecoursApiService {
       }
 
       final url = '${ApiConfig.baseUrl}/api/recrutement/recours/';
-      print('🌐 URL: $url');
 
       final response = await http.get(
         Uri.parse(url),
@@ -43,30 +42,27 @@ class RecoursApiService {
         },
       );
 
-      print('📡 Status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         final recoursResponse = RecoursResponse.fromJson(data);
         
         // Mettre en cache
         await _cacheRecours(data);
-        
-        print('✅ Recours chargés: ${recoursResponse.recours.length} éléments');
+
         return {
           'success': true,
           'data': recoursResponse,
         };
       } else {
-        print('❌ Erreur API: ${response.statusCode}');
-        print('📝 Réponse: ${response.body}');
+
+
         return {
           'success': false,
           'error': 'Erreur ${response.statusCode}: ${response.body}',
         };
       }
     } catch (e) {
-      print('❌ Exception lors du chargement des recours: $e');
+
       return {
         'success': false,
         'error': 'Erreur de connexion: $e',
@@ -79,11 +75,10 @@ class RecoursApiService {
     required String motifRejet,
     required String justification,
     String? candidature,
-    List<String> documents = const [],
+    List<File> documents = const [],
     String? token,
   }) async {
-    print('📝 Création d\'un nouveau recours...');
-    
+
     try {
       final authToken = token ?? await _getStoredToken();
       if (authToken == null) {
@@ -93,61 +88,111 @@ class RecoursApiService {
         };
       }
 
-      final request = CreateRecoursRequest(
-        motifRejet: motifRejet,
-        justification: justification,
-        candidature: candidature,
-        documents: documents,
-      );
-
       final url = '${ApiConfig.baseUrl}/api/recrutement/recours/';
-      print('🌐 URL: $url');
-      print('📤 Données: ${request.toJson()}');
 
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $authToken',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(request.toJson()),
-      );
+      // Créer une requête multipart si des fichiers sont présents
+      if (documents.isNotEmpty) {
+        final request = http.MultipartRequest('POST', Uri.parse(url));
+        
+        // Headers d'authentification
+        request.headers['Authorization'] = 'Bearer $authToken';
+        
+        // Champs de données
+        request.fields['motif_rejet'] = motifRejet;
+        request.fields['justification'] = justification;
+        if (candidature != null) {
+          request.fields['candidature'] = candidature;
+        }
+        
+        // Ajouter les fichiers
+        for (int i = 0; i < documents.length; i++) {
+          final file = documents[i];
+          final multipartFile = await http.MultipartFile.fromPath(
+            'documents',
+            file.path,
+            filename: file.path.split('/').last,
+          );
+          request.files.add(multipartFile);
+        }
 
-      print('📡 Status: ${response.statusCode}');
-      print('📄 Réponse: ${response.body}');
+        final response = await request.send();
+        final responseBody = await response.stream.bytesToString();
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
-        final recours = Recours.fromJson(data);
-        
-        // Invalider le cache pour forcer le rechargement
-        await _clearCache();
-        
-        print('✅ Recours créé avec succès: ${recours.id}');
-        return {
-          'success': true,
-          'data': recours,
-        };
-      } else if (response.statusCode == 400) {
-        // Erreurs de validation
-        final errorData = json.decode(response.body);
-        final validationError = RecoursValidationError.fromJson(errorData);
-        
-        print('⚠️ Erreurs de validation: ${validationError.errors}');
-        return {
-          'success': false,
-          'error': 'Erreurs de validation',
-          'validation_errors': validationError,
-        };
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = json.decode(responseBody);
+          final recours = Recours.fromJson(data);
+          
+          // Invalider le cache pour forcer le rechargement
+          await _clearCache();
+
+          return {
+            'success': true,
+            'data': recours,
+          };
+        } else if (response.statusCode == 400) {
+          // Erreurs de validation
+          final errorData = json.decode(responseBody);
+          final validationError = RecoursValidationError.fromJson(errorData);
+
+          return {
+            'success': false,
+            'error': 'Erreurs de validation',
+            'validation_errors': validationError,
+          };
+        } else {
+          return {
+            'success': false,
+            'error': 'Erreur ${response.statusCode}: $responseBody',
+          };
+        }
       } else {
-        print('❌ Erreur API: ${response.statusCode}');
-        return {
-          'success': false,
-          'error': 'Erreur ${response.statusCode}: ${response.body}',
-        };
+        // Requête JSON classique si pas de fichiers
+        final request = CreateRecoursRequest(
+          motifRejet: motifRejet,
+          justification: justification,
+          candidature: candidature,
+          documents: [],
+        );
+
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $authToken',
+            'Content-Type': 'application/json',
+          },
+          body: json.encode(request.toJson()),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = json.decode(response.body);
+          final recours = Recours.fromJson(data);
+          
+          // Invalider le cache pour forcer le rechargement
+          await _clearCache();
+
+          return {
+            'success': true,
+            'data': recours,
+          };
+        } else if (response.statusCode == 400) {
+          // Erreurs de validation
+          final errorData = json.decode(response.body);
+          final validationError = RecoursValidationError.fromJson(errorData);
+
+          return {
+            'success': false,
+            'error': 'Erreurs de validation',
+            'validation_errors': validationError,
+          };
+        } else {
+          return {
+            'success': false,
+            'error': 'Erreur ${response.statusCode}: ${response.body}',
+          };
+        }
       }
     } catch (e) {
-      print('❌ Exception lors de la création du recours: $e');
+
       return {
         'success': false,
         'error': 'Erreur de connexion: $e',
@@ -161,7 +206,7 @@ class RecoursApiService {
       // 1. Essayer de charger depuis le cache
       final cachedData = await _getCachedRecours();
       if (cachedData != null) {
-        print('💾 Données chargées depuis le cache');
+
         return {
           'success': true,
           'data': cachedData,
@@ -173,7 +218,7 @@ class RecoursApiService {
       final result = await getMesRecours(token: token);
       return result;
     } catch (e) {
-      print('❌ Erreur lors du chargement avec cache: $e');
+
       return {
         'success': false,
         'error': 'Erreur de chargement: $e',
@@ -190,9 +235,9 @@ class RecoursApiService {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
       await prefs.setString(_cacheKey, json.encode(cacheData));
-      print('💾 Recours mis en cache');
+
     } catch (e) {
-      print('⚠️ Erreur lors de la mise en cache: $e');
+
     }
   }
 
@@ -211,14 +256,14 @@ class RecoursApiService {
       // Vérifier si le cache est encore valide
       final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
       if (cacheAge > _cacheDuration.inMilliseconds) {
-        print('⏰ Cache expiré, suppression...');
+
         await _clearCache();
         return null;
       }
 
       return RecoursResponse.fromJson(data);
     } catch (e) {
-      print('⚠️ Erreur lors de la lecture du cache: $e');
+
       await _clearCache();
       return null;
     }
@@ -229,9 +274,9 @@ class RecoursApiService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_cacheKey);
-      print('🗑️ Cache des recours supprimé');
+
     } catch (e) {
-      print('⚠️ Erreur lors de la suppression du cache: $e');
+
     }
   }
 
@@ -278,5 +323,50 @@ class RecoursApiService {
     }
 
     return stats;
+  }
+
+  /// Valide les fichiers avant upload
+  static Map<String, String?> validateFiles(List<File> files) {
+    Map<String, String?> errors = {};
+    
+    if (files.length > 5) {
+      errors['files'] = 'Maximum 5 fichiers autorisés';
+      return errors;
+    }
+
+    for (int i = 0; i < files.length; i++) {
+      final file = files[i];
+      final fileName = file.path.split('/').last.toLowerCase();
+      final fileSize = file.lengthSync();
+      
+      // Vérifier la taille (max 5MB par fichier)
+      if (fileSize > 5 * 1024 * 1024) {
+        errors['file_$i'] = 'Le fichier ${fileName} est trop volumineux (max 5MB)';
+        continue;
+      }
+      
+      // Vérifier l'extension
+      if (!fileName.endsWith('.pdf') && 
+          !fileName.endsWith('.jpg') && 
+          !fileName.endsWith('.jpeg') && 
+          !fileName.endsWith('.png') &&
+          !fileName.endsWith('.doc') &&
+          !fileName.endsWith('.docx')) {
+        errors['file_$i'] = 'Format non supporté pour ${fileName} (PDF, JPG, PNG, DOC, DOCX uniquement)';
+      }
+    }
+
+    return errors;
+  }
+
+  /// Obtient la taille formatée d'un fichier
+  static String getFormattedFileSize(int bytes) {
+    if (bytes < 1024) {
+      return "$bytes B";
+    } else if (bytes < 1024 * 1024) {
+      return "${(bytes / 1024).toStringAsFixed(1)} KB";
+    } else {
+      return "${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB";
+    }
   }
 }

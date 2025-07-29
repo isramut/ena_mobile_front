@@ -3,6 +3,7 @@ import 'package:ena_mobile_front/models/recours_models.dart';
 import 'package:ena_mobile_front/services/recours_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:file_picker/file_picker.dart';
 
 class RecoursScreen extends StatefulWidget {
   const RecoursScreen({super.key});
@@ -20,7 +21,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
   String selectedMotif = '';
   bool loading = false;
   bool isLoadingRecours = true;
-  List<File> attachedFiles = [];
+  List<AttachedFile> attachedFiles = [];
   List<Recours> mesRecours = [];
   String? errorMessage;
   bool hasError = false;
@@ -57,7 +58,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
           mesRecours = response.recours;
           isLoadingRecours = false;
         });
-        print('✅ Recours chargés: ${mesRecours.length} éléments');
+
       } else {
         setState(() {
           isLoadingRecours = false;
@@ -114,7 +115,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
       final result = await RecoursApiService.creerRecours(
         motifRejet: selectedMotif,
         justification: _justificationController.text,
-        documents: [], // TODO: Gérer l'upload de fichiers
+        documents: attachedFiles.map((f) => f.file).toList(),
       );
 
       if (result['success'] == true) {
@@ -189,7 +190,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -244,6 +245,61 @@ class _RecoursScreenState extends State<RecoursScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  /// Méthode pour sélectionner des fichiers
+  Future<void> _pickFiles() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+        allowMultiple: true,
+      );
+
+      if (result != null) {
+        // Convertir les PlatformFile en File et AttachedFile
+        List<AttachedFile> newFiles = [];
+        
+        for (PlatformFile platformFile in result.files) {
+          if (platformFile.path != null) {
+            final file = File(platformFile.path!);
+            final attachedFile = AttachedFile.fromFile(file);
+            newFiles.add(attachedFile);
+          }
+        }
+
+        // Valider les fichiers
+        final currentFiles = List<AttachedFile>.from(attachedFiles);
+        currentFiles.addAll(newFiles);
+        
+        if (currentFiles.length > 5) {
+          _showErrorSnackBar('Maximum 5 fichiers autorisés');
+          return;
+        }
+
+        final fileValidationErrors = RecoursApiService.validateFiles(
+          currentFiles.map((f) => f.file).toList(),
+        );
+
+        if (fileValidationErrors.isNotEmpty) {
+          _showErrorSnackBar(fileValidationErrors.values.first!);
+          return;
+        }
+
+        setState(() {
+          attachedFiles.addAll(newFiles);
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de la sélection des fichiers: $e');
+    }
+  }
+
+  /// Méthode pour supprimer un fichier
+  void _removeFile(int index) {
+    setState(() {
+      attachedFiles.removeAt(index);
+    });
   }
 
   @override
@@ -458,7 +514,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: statusColor),
                   ),
@@ -512,9 +568,9 @@ class _RecoursScreenState extends State<RecoursScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.05),
+                  color: Colors.blue.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,9 +699,9 @@ class _RecoursScreenState extends State<RecoursScreen> {
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         validationErrors!.getErrorsForField('motif_rejet').join(', '),
@@ -661,7 +717,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
                       border: Border.all(
                         color: validationErrors?.hasErrorForField('motif_rejet') == true
                             ? Colors.red
-                            : theme.colorScheme.outline.withOpacity(0.5),
+                            : theme.colorScheme.outline.withValues(alpha: 0.5),
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -707,9 +763,9 @@ class _RecoursScreenState extends State<RecoursScreen> {
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         validationErrors!.getErrorsForField('justification').join(', '),
@@ -734,7 +790,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
                         borderSide: BorderSide(
                           color: validationErrors?.hasErrorForField('justification') == true
                               ? Colors.red
-                              : theme.colorScheme.outline.withOpacity(0.5),
+                              : theme.colorScheme.outline.withValues(alpha: 0.5),
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
@@ -742,7 +798,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
                         borderSide: BorderSide(
                           color: validationErrors?.hasErrorForField('justification') == true
                               ? Colors.red
-                              : theme.colorScheme.outline.withOpacity(0.5),
+                              : theme.colorScheme.outline.withValues(alpha: 0.5),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -773,7 +829,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Section pièces jointes (TODO: À implémenter)
+                  // Section pièces jointes
                   Text(
                     'Pièces justificatives (optionnel)',
                     style: GoogleFonts.poppins(
@@ -783,34 +839,135 @@ class _RecoursScreenState extends State<RecoursScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: theme.colorScheme.outline.withOpacity(0.3),
+                  
+                  // Bouton d'ajout de fichiers
+                  InkWell(
+                    onTap: _pickFiles,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: theme.colorScheme.surface,
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey.shade50,
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.cloud_upload_outlined,
-                          size: 40,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Upload de fichiers bientôt disponible',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Colors.grey.shade500,
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.cloud_upload_outlined,
+                            size: 40,
+                            color: theme.colorScheme.primary,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Appuyer pour ajouter des fichiers',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'PDF, JPG, PNG, DOC, DOCX (max 5MB par fichier)',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                  
+                  // Liste des fichiers sélectionnés
+                  if (attachedFiles.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Column(
+                      children: attachedFiles.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final attachedFile = entry.value;
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.3),
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.green.withValues(alpha: 0.05),
+                          ),
+                          child: Row(
+                            children: [
+                              // Icône du type de fichier
+                              Icon(
+                                attachedFile.type == 'PDF' 
+                                    ? Icons.picture_as_pdf
+                                    : (attachedFile.type == 'DOC' || attachedFile.type == 'DOCX')
+                                        ? Icons.description
+                                        : Icons.image,
+                                color: Colors.green,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              
+                              // Informations du fichier
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      attachedFile.name,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '${attachedFile.type} • ${attachedFile.formattedSize}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Bouton de suppression
+                              IconButton(
+                                onPressed: () => _removeFile(index),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 18,
+                                ),
+                                tooltip: 'Supprimer',
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    
+                    // Information sur le nombre de fichiers
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${attachedFiles.length}/5 fichiers sélectionnés',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 30),
 
                   // Bouton de soumission

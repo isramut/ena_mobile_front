@@ -1,8 +1,12 @@
 import 'package:ena_mobile_front/features/auth/email_verify.dart';
 import 'package:ena_mobile_front/services/auth_api_service.dart';
 import 'package:ena_mobile_front/widgets/error_popup.dart';
+import 'package:ena_mobile_front/widgets/page_transitions.dart';
+import 'package:ena_mobile_front/utils/app_navigator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
 
 // Enum pour la force du mot de passe
@@ -28,6 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool showPassword = false;
   bool showConfirmPassword = false;
   bool showPasswordInfo = false; // Nouvelle variable pour afficher l'info
+  bool acceptTerms = false; // Case à cocher pour les conditions d'utilisation
   String? error;
   PasswordStrength _passwordStrength = PasswordStrength.weak;
 
@@ -298,6 +303,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _register() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Vérification des conditions d'utilisation
+    if (!acceptTerms) {
+      setState(() {
+        error = "Vous devez accepter les conditions d'utilisation pour continuer.";
+        loading = false;
+      });
+      await ErrorPopup.show(
+        context,
+        title: "Conditions d'utilisation",
+        message: error!,
+      );
+      return;
+    }
+
     // Vérification supplémentaire de la force du mot de passe
     if (_passwordStrength != PasswordStrength.strong) {
       setState(() {
@@ -346,13 +365,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (result['success'] == true) {
         // Succès - Redirection vers vérification email
         if (mounted) {
-          Navigator.pushReplacement(
+          AppNavigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (_) => PasswordRecuperationScreen(
-                email: email.trim().toLowerCase(),
-                isFromForgotPassword: false, // Flux inscription
-              ),
+            PasswordRecuperationScreen(
+              email: email.trim().toLowerCase(),
+              isFromForgotPassword: false, // Flux inscription
             ),
           );
         }
@@ -385,10 +402,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _goToLogin() {
-    Navigator.pushReplacement(
+    PageTransitions.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      const LoginScreen(),
+      type: PageTransitionType.slideAndFade,
+      slideDirection: SlideDirection.leftToRight,
     );
+  }
+
+  // Méthode pour ouvrir les conditions d'utilisation
+  void _openTermsOfService() {
+    launchUrl(Uri.parse('https://ena.gouv.cd/terms'));
   }
 
   // Méthode pour gérer les erreurs de doublon avec des messages conviviaux
@@ -824,6 +848,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   }
                                   return null;
                                 },
+                              ),
+                              const SizedBox(height: 18),
+                              // Case à cocher pour les conditions d'utilisation
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Checkbox(
+                                    value: acceptTerms,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        acceptTerms = value ?? false;
+                                      });
+                                    },
+                                    activeColor: isDark
+                                        ? Theme.of(context).colorScheme.primary
+                                        : accentBlue,
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 12),
+                                      child: RichText(
+                                        text: TextSpan(
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13,
+                                            color: isDark
+                                                ? Theme.of(context).colorScheme.onSurface
+                                                : Colors.grey[700],
+                                          ),
+                                          children: [
+                                            const TextSpan(text: "J'accepte les "),
+                                            TextSpan(
+                                              text: "conditions d'utilisation et la politique de confidentialité",
+                                              style: GoogleFonts.poppins(
+                                                color: isDark
+                                                    ? Theme.of(context).colorScheme.primary
+                                                    : accentBlue,
+                                                fontWeight: FontWeight.bold,
+                                                decoration: TextDecoration.underline,
+                                              ),
+                                              recognizer: TapGestureRecognizer()
+                                                ..onTap = _openTermsOfService,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 32),
                               // Bouton d'inscription
