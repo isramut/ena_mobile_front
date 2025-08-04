@@ -334,7 +334,12 @@ class _AccueilScreenState extends State<AccueilScreen> {
         return 0.7; // 70%
       case 'valide':
       case 'rejete':
-        return 1.0; // 100%
+        // Afficher 100% uniquement si can_publish est true
+        if (_userInfo?.canPublish == true) {
+          return 1.0; // 100%
+        } else {
+          return 0.7; // Reste à 70% si can_publish est false
+        }
       default:
         return 0.2; // Par défaut 20%
     }
@@ -351,9 +356,17 @@ class _AccueilScreenState extends State<AccueilScreen> {
     
     switch (_candidatureInfo!.statut) {
       case 'valide':
-        return const Color(0xFF27AE60); // Vert pour validé
+        // Afficher vert uniquement si can_publish est true
+        if (_userInfo?.canPublish == true) {
+          return const Color(0xFF27AE60); // Vert pour validé
+        }
+        return Colors.white; // Blanc si can_publish est false
       case 'rejete':
-        return const Color(0xFFCD1719); // Rouge pour rejeté
+        // Afficher rouge uniquement si can_publish est true
+        if (_userInfo?.canPublish == true) {
+          return const Color(0xFFCD1719); // Rouge pour rejeté
+        }
+        return Colors.white; // Blanc si can_publish est false
       default:
         return Colors.white; // Blanc par défaut
     }
@@ -377,9 +390,17 @@ class _AccueilScreenState extends State<AccueilScreen> {
       case 'en_traitement':
         return "Étape en cours : Vérification des documents";
       case 'valide':
-        return null; // Message de félicitation à la place
+        // Afficher message uniquement si can_publish est true
+        if (_userInfo?.canPublish == true) {
+          return null; // Message de félicitation à la place
+        }
+        return "Étape en cours : Vérification des documents"; // Si can_publish est false
       case 'rejete':
-        return null; // Message de rejet à la place
+        // Afficher message uniquement si can_publish est true
+        if (_userInfo?.canPublish == true) {
+          return null; // Message de rejet à la place
+        }
+        return "Étape en cours : Vérification des documents"; // Si can_publish est false
       default:
         return "Étape en cours : Vérification des documents";
     }
@@ -391,9 +412,17 @@ class _AccueilScreenState extends State<AccueilScreen> {
     
     switch (_candidatureInfo!.statut) {
       case 'valide':
-        return "🎉 Félicitations ! Votre candidature a été jugée valide. Vous serez contacté prochainement pour la suite de la procédure.";
+        // Afficher le message de validation uniquement si can_publish est true
+        if (_userInfo?.canPublish == true) {
+          return "🎉 Félicitations ! Votre candidature a été jugée valide. Vous serez contacté prochainement pour la suite de la procédure.";
+        }
+        return null; // Si can_publish est false, pas de message spécial
       case 'rejete':
-        return "Votre dossier de candidature n'a malheureusement pas répondu à toutes les exigences requises. Nous vous remercions de votre intérêt et de la confiance accordée à l'ENA. Un email vous sera envoyé vous notifiant les raisons du rejet et vous pouvez déposer un recours endéans 48h.";
+        // Afficher le message de rejet uniquement si can_publish est true
+        if (_userInfo?.canPublish == true) {
+          return "Votre dossier de candidature n'a malheureusement pas répondu à toutes les exigences requises. Nous vous remercions de votre intérêt et de la confiance accordée à l'ENA. Un email vous sera envoyé vous notifiant les raisons du rejet et vous pouvez déposer un recours endéans 48h.";
+        }
+        return null; // Si can_publish est false, pas de message spécial
       default:
         return null;
     }
@@ -1169,13 +1198,25 @@ class _AccueilScreenState extends State<AccueilScreen> {
               break;
             case 'valide':
             case 'rejete':
-              color = const Color(0xFF27AE60);
-              icon = Icons.check_circle;
-              subtitle = "Vérification des documents";
-              badgeText = "Terminée";
-              done = true;
-              active = false;
-              date = null; // Pas de date pour "Terminée"
+              // Afficher comme terminé uniquement si can_publish est true
+              if (_userInfo?.canPublish == true) {
+                color = const Color(0xFF27AE60);
+                icon = Icons.check_circle;
+                subtitle = "Vérification des documents";
+                badgeText = "Terminée";
+                done = true;
+                active = false;
+                date = null; // Pas de date pour "Terminée"
+              } else {
+                // Si can_publish est false, afficher comme en cours
+                color = const Color(0xFF3678FF);
+                icon = Icons.timelapse_rounded;
+                subtitle = "Vérification des documents";
+                badgeText = "En cours";
+                done = false;
+                active = true;
+                date = null; // Pas de date pour "En cours"
+              }
               break;
             default:
               color = const Color(0xFF3678FF);

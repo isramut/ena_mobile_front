@@ -120,6 +120,8 @@ class PdfGeneratorService {
           if (targetDir != null) {
             targetDir = Directory('${targetDir.path}/Downloads');
             await targetDir.create(recursive: true);
+          } else {
+            throw Exception('Impossible d\'accéder au stockage externe');
           }
         }
       } else if (Platform.isIOS) {
@@ -130,7 +132,7 @@ class PdfGeneratorService {
         targetDir = await getApplicationDocumentsDirectory();
       }
       
-      if (targetDir == null || !await targetDir.exists()) {
+      if (!await targetDir.exists()) {
         throw Exception('Impossible d\'accéder au dossier de téléchargement');
       }
       

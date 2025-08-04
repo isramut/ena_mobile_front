@@ -1745,7 +1745,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
                                   "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
                             });
                           }
-                        },
+                                                },
                       ),
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
@@ -2789,9 +2789,46 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       }
 
       final patchResp = await patchRequest.send();
+      final patchRespBody = await patchResp.stream.bytesToString();
       
       if (patchResp.statusCode >= 400) {
-        _showErrorDialog("Erreur lors de la mise à jour de votre profil. Veuillez réessayer.");
+        String errorMessage = "Erreur lors de la mise à jour de votre profil.";
+        
+        // Tenter de parser la réponse pour obtenir les erreurs détaillées
+        if (patchRespBody.isNotEmpty) {
+          try {
+            final errorData = json.decode(patchRespBody);
+            if (errorData is Map<String, dynamic>) {
+              List<String> errorMessages = [];
+              
+              errorData.forEach((field, errors) {
+                if (errors is List) {
+                  for (var error in errors) {
+                    errorMessages.add("$field: $error");
+                  }
+                } else if (errors is String) {
+                  errorMessages.add("$field: $errors");
+                }
+              });
+              
+              if (errorMessages.isNotEmpty) {
+                errorMessage = "Erreurs de validation:\n• ${errorMessages.join('\n• ')}";
+              }
+            }
+          } catch (e) {
+            // Si le parsing échoue, utiliser la réponse brute si elle est lisible
+            if (patchRespBody.length < 500) {
+              errorMessage = "Erreur lors de la mise à jour: $patchRespBody";
+            }
+          }
+        }
+        
+        // Ajouter les détails techniques en mode debug
+        if (kDebugMode && patchRespBody.isNotEmpty) {
+          errorMessage += "\n\nDétails techniques:\nCode: ${patchResp.statusCode}\nRéponse: $patchRespBody";
+        }
+        
+        _showErrorDialog(errorMessage);
         setState(() => loading = false);
         return;
       }

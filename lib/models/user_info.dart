@@ -18,6 +18,7 @@ class UserInfo {
   final String? adressePhysique;
   final DateTime? applicationStartDate;
   final bool? canSubmitCandidature;
+  final bool? canPublish;
   final String? numero;
   final DateTime? dateCreation;
 
@@ -38,6 +39,7 @@ class UserInfo {
     this.adressePhysique,
     this.applicationStartDate,
     this.canSubmitCandidature,
+    this.canPublish,
     this.numero,
     this.dateCreation,
   });
@@ -62,6 +64,7 @@ class UserInfo {
           ? DateTime.tryParse(json['application_start_date']) 
           : null,
       canSubmitCandidature: json['can_submit_candidature'],
+      canPublish: json['can_publish'],
       numero: json['numero'],
       dateCreation: json['date_creation'] != null 
           ? DateTime.tryParse(json['date_creation']) 
