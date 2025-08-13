@@ -423,6 +423,98 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     }
   }
 
+  // ===================== VALIDATION JWT TOKEN =====================
+  
+  /// Vérifie si le token JWT est valide et non expiré
+  Future<bool> _isTokenValid() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+      
+      // Décoder le JWT pour vérifier l'expiration
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        return false;
+      }
+      
+      // Décoder le payload (partie centrale du JWT)
+      String payload = parts[1];
+      
+      // Normaliser le padding base64
+      switch (payload.length % 4) {
+        case 2:
+          payload += '==';
+          break;
+        case 3:
+          payload += '=';
+          break;
+      }
+      
+      // Décoder et parser le payload
+      final payloadBytes = base64Decode(payload);
+      final payloadString = utf8.decode(payloadBytes);
+      final payloadMap = json.decode(payloadString);
+      
+      // Vérifier l'expiration
+      final exp = payloadMap['exp'] as int?;
+      if (exp == null) {
+        return false;
+      }
+      
+      final currentTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final bufferTime = 300; // 5 minutes de buffer
+      
+      return exp > (currentTime + bufferTime);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erreur lors de la validation du token: $e');
+      }
+      return false;
+    }
+  }
+  
+  /// Gère l'expiration du token JWT
+  Future<void> _handleTokenExpiration() async {
+    if (kDebugMode) {
+      print('Token expiré - redirection vers la connexion');
+    }
+    
+    // Déconnecter l'utilisateur
+    await _forceLogout();
+  }
+  
+  /// Force la déconnexion de l'utilisateur
+  Future<void> _forceLogout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      
+      if (mounted) {
+        _showErrorDialog(
+          "Votre session a expiré. Vous allez être redirigé vers la page de connexion.",
+        );
+        
+        // Attendre un moment avant la redirection
+        await Future.delayed(const Duration(seconds: 2));
+        
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login',
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erreur lors de la déconnexion forcée: $e');
+      }
+    }
+  }
+
   // ===================== VALIDATION DU TÉLÉPHONE =====================
   
   /// Valide le numéro de téléphone selon les critères:
@@ -1745,7 +1837,7 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
                                   "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
                             });
                           }
-                                                },
+                                                                        },
                       ),
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
@@ -2725,6 +2817,16 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
     setState(() => loading = true);
 
     try {
+      // ============ VALIDATION JWT TOKEN AVANT SOUMISSION =============
+      if (!await _isTokenValid()) {
+        if (kDebugMode) {
+          print('Token invalide ou expiré - gestion de l\'expiration');
+        }
+        await _handleTokenExpiration();
+        setState(() => loading = false);
+        return;
+      }
+
       // Récupérer le token d'authentification
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
@@ -2794,38 +2896,81 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
       if (patchResp.statusCode >= 400) {
         String errorMessage = "Erreur lors de la mise à jour de votre profil.";
         
-        // Tenter de parser la réponse pour obtenir les erreurs détaillées
+        // Parsing amélioré des erreurs détaillées
         if (patchRespBody.isNotEmpty) {
           try {
             final errorData = json.decode(patchRespBody);
+            
             if (errorData is Map<String, dynamic>) {
               List<String> errorMessages = [];
               
-              errorData.forEach((field, errors) {
-                if (errors is List) {
-                  for (var error in errors) {
-                    errorMessages.add("$field: $error");
+              // Traitement spécialisé selon le type de réponse d'erreur
+              if (errorData.containsKey('errors')) {
+                // Format: {"errors": {"field": ["message1", "message2"]}}
+                final errors = errorData['errors'] as Map<String, dynamic>;
+                errors.forEach((field, fieldErrors) {
+                  final fieldName = _translateFieldName(field);
+                  if (fieldErrors is List) {
+                    for (var error in fieldErrors) {
+                      errorMessages.add("$fieldName: $error");
+                    }
+                  } else if (fieldErrors is String) {
+                    errorMessages.add("$fieldName: $fieldErrors");
                   }
-                } else if (errors is String) {
-                  errorMessages.add("$field: $errors");
-                }
-              });
+                });
+              } else if (errorData.containsKey('message')) {
+                // Format: {"message": "error description"}
+                errorMessages.add(errorData['message'].toString());
+              } else {
+                // Traitement générique
+                errorData.forEach((field, errors) {
+                  final fieldName = _translateFieldName(field);
+                  if (errors is List) {
+                    for (var error in errors) {
+                      errorMessages.add("$fieldName: $error");
+                    }
+                  } else if (errors is String) {
+                    errorMessages.add("$fieldName: $errors");
+                  }
+                });
+              }
               
               if (errorMessages.isNotEmpty) {
                 errorMessage = "Erreurs de validation:\n• ${errorMessages.join('\n• ')}";
               }
+            } else if (errorData is String) {
+              errorMessage = "Erreur: $errorData";
             }
-          } catch (e) {
+          } catch (parseError) {
             // Si le parsing échoue, utiliser la réponse brute si elle est lisible
-            if (patchRespBody.length < 500) {
-              errorMessage = "Erreur lors de la mise à jour: $patchRespBody";
+            if (patchRespBody.length < 500 && !patchRespBody.contains('<html')) {
+              errorMessage = "Erreur de validation: $patchRespBody";
+            }
+            
+            if (kDebugMode) {
+              print('Erreur de parsing JSON: $parseError');
+              print('Réponse brute: $patchRespBody');
             }
           }
         }
         
+        // Contextualisation selon le code d'erreur
+        if (patchResp.statusCode == 400) {
+          errorMessage = "Données invalides.\n\n$errorMessage";
+        } else if (patchResp.statusCode == 401) {
+          errorMessage = "Session expirée. Veuillez vous reconnecter.";
+          await _handleTokenExpiration();
+          setState(() => loading = false);
+          return;
+        } else if (patchResp.statusCode == 422) {
+          errorMessage = "Erreurs de validation des données:\n\n$errorMessage";
+        } else if (patchResp.statusCode >= 500) {
+          errorMessage = "Erreur serveur temporaire. Veuillez réessayer dans quelques instants.";
+        }
+        
         // Ajouter les détails techniques en mode debug
-        if (kDebugMode && patchRespBody.isNotEmpty) {
-          errorMessage += "\n\nDétails techniques:\nCode: ${patchResp.statusCode}\nRéponse: $patchRespBody";
+        if (kDebugMode) {
+          errorMessage += "\n\n--- Détails techniques ---\nCode HTTP: ${patchResp.statusCode}\nRéponse complète: $patchRespBody";
         }
         
         _showErrorDialog(errorMessage);
@@ -2963,34 +3108,93 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
         
         _showSuccessDialog();
       } else {
-        final errorData = postRespBody.isNotEmpty ? postRespBody : "Erreur lors de la soumission de la candidature";
+        String errorMessage = "Une erreur s'est produite lors de l'envoi de votre candidature.";
+        
+        // Parsing amélioré des erreurs de candidature
+        if (postRespBody.isNotEmpty) {
+          try {
+            final errorData = json.decode(postRespBody);
+            
+            if (errorData is Map<String, dynamic>) {
+              List<String> errorMessages = [];
+              
+              // Vérifier les différents formats de réponse d'erreur
+              if (errorData.containsKey('errors')) {
+                final errors = errorData['errors'] as Map<String, dynamic>;
+                errors.forEach((field, fieldErrors) {
+                  final fieldName = _translateCandidatureFieldName(field);
+                  if (fieldErrors is List) {
+                    for (var error in fieldErrors) {
+                      errorMessages.add("$fieldName: $error");
+                    }
+                  } else if (fieldErrors is String) {
+                    errorMessages.add("$fieldName: $fieldErrors");
+                  }
+                });
+              } else if (errorData.containsKey('message')) {
+                errorMessages.add(errorData['message'].toString());
+              } else if (errorData.containsKey('detail')) {
+                errorMessages.add(errorData['detail'].toString());
+              } else {
+                // Traitement générique
+                errorData.forEach((field, errors) {
+                  final fieldName = _translateCandidatureFieldName(field);
+                  if (errors is List) {
+                    for (var error in errors) {
+                      errorMessages.add("$fieldName: $error");
+                    }
+                  } else if (errors is String) {
+                    errorMessages.add("$fieldName: $errors");
+                  }
+                });
+              }
+              
+              if (errorMessages.isNotEmpty) {
+                errorMessage = "Erreurs de candidature:\n• ${errorMessages.join('\n• ')}";
+              }
+            } else if (errorData is String) {
+              errorMessage = "Erreur: $errorData";
+            }
+          } catch (parseError) {
+            // Si le parsing JSON échoue, analyser la réponse texte
+            if (postRespBody.length < 1000 && !postRespBody.contains('<html')) {
+              errorMessage = "Erreur de soumission: $postRespBody";
+            }
+            
+            if (kDebugMode) {
+              print('Erreur de parsing JSON candidature: $parseError');
+              print('Réponse brute candidature: $postRespBody');
+            }
+          }
+        }
         
         // Vérifier si c'est une erreur de candidature en double
-        if (errorData.toLowerCase().contains("unique") || 
-            errorData.toLowerCase().contains("duplicate") || 
-            errorData.toLowerCase().contains("already exists") ||
-            errorData.toLowerCase().contains("déjà") ||
+        if (postRespBody.toLowerCase().contains("unique") || 
+            postRespBody.toLowerCase().contains("duplicate") || 
+            postRespBody.toLowerCase().contains("already exists") ||
+            postRespBody.toLowerCase().contains("déjà") ||
             postResponse.statusCode == 409) {
           _showErrorDialog("Vous avez déjà soumis une candidature. Une seule candidature par personne est autorisée.");
         } else {
-          // Afficher l'erreur détaillée en mode debug
-          String errorMessage = "Une erreur s'est produite lors de l'envoi de votre candidature.";
-          
+          // Contextualisation selon le code d'erreur
           if (postResponse.statusCode == 400) {
-            errorMessage = "Données invalides. Veuillez vérifier tous les champs requis.";
+            errorMessage = "Données de candidature invalides.\n\n$errorMessage";
           } else if (postResponse.statusCode == 401) {
-            errorMessage = "Session expirée. Veuillez vous reconnecter.";
+            errorMessage = "Session expirée pendant la soumission. Veuillez vous reconnecter.";
+            await _handleTokenExpiration();
+            setState(() => loading = false);
+            return;
           } else if (postResponse.statusCode == 413) {
-            errorMessage = "Un ou plusieurs fichiers sont trop volumineux.";
+            errorMessage = "Un ou plusieurs fichiers sont trop volumineux (maximum 5 MB par fichier).";
           } else if (postResponse.statusCode == 422) {
-            errorMessage = "Format de données incorrect. Vérifiez vos informations.";
+            errorMessage = "Erreurs de validation de candidature:\n\n$errorMessage";
           } else if (postResponse.statusCode >= 500) {
-            errorMessage = "Erreur serveur. Veuillez réessayer plus tard.";
+            errorMessage = "Erreur serveur lors de la soumission. Veuillez réessayer plus tard.";
           }
           
-          // En mode debug, afficher plus de détails
-          if (kDebugMode && postRespBody.isNotEmpty) {
-            errorMessage += "\n\nDétails techniques:\nCode: ${postResponse.statusCode}\nRéponse: $postRespBody";
+          // Ajouter les détails techniques en mode debug
+          if (kDebugMode) {
+            errorMessage += "\n\n--- Détails techniques ---\nCode HTTP: ${postResponse.statusCode}\nRéponse complète: $postRespBody";
           }
           
           _showErrorDialog(errorMessage);
@@ -3047,6 +3251,60 @@ class _CandidatureProcessScreenState extends State<CandidatureProcessScreen> {
   }
 
   // ============ MÉTHODES DE CODIFICATION =============
+  
+  /// Traduit les noms de champs techniques en français
+  String _translateFieldName(String fieldName) {
+    const translations = {
+      'nom': 'Nom',
+      'postnom': 'Post-nom',
+      'prenom': 'Prénom',
+      'genre': 'Genre',
+      'etat_civil': 'État civil',
+      'lieu_de_naissance': 'Lieu de naissance',
+      'date_de_naissance': 'Date de naissance',
+      'adresse_physique': 'Adresse physique',
+      'province_de_residence': 'Province de résidence',
+      'ville_de_residence': 'Ville de résidence',
+      'province_d_origine': 'Province d\'origine',
+      'nationalite': 'Nationalité',
+      'niveau_etude': 'Niveau d\'étude',
+      'domaine_etude': 'Domaine d\'étude',
+      'universite_frequentee': 'Université fréquentée',
+      'score_obtenu': 'Score obtenu',
+      'annee_de_graduation': 'Année de graduation',
+      'statut_professionnel': 'Statut professionnel',
+      'matricule': 'Matricule',
+      'grade': 'Grade',
+      'fonction': 'Fonction',
+      'administration_d_attache': 'Administration d\'attache',
+      'ministere': 'Ministère',
+      'entreprise': 'Entreprise',
+      'telephone': 'Téléphone',
+      'numero_piece_identite': 'Numéro de pièce d\'identité',
+      'photo': 'Photo',
+    };
+    
+    return translations[fieldName] ?? fieldName;
+  }
+  
+  /// Traduit les noms de champs de candidature en français
+  String _translateCandidatureFieldName(String fieldName) {
+    const translations = {
+      'piece_identite': 'Pièce d\'identité',
+      'diplome': 'Diplôme',
+      'lettre_motivation': 'Lettre de motivation',
+      'aptitude_physique': 'Certificat d\'aptitude physique',
+      'cv': 'CV',
+      'releves_notes': 'Relevé de notes',
+      'acte_admission': 'Acte d\'admission',
+      'candidature': 'Candidature',
+      'files': 'Fichiers',
+      'upload': 'Téléchargement',
+    };
+    
+    return translations[fieldName] ?? fieldName;
+  }
+  
   String _capitalizeFirstLetter(String text) {
     if (text.isEmpty) return text;
     return text[0].toUpperCase() + text.substring(1).toLowerCase();

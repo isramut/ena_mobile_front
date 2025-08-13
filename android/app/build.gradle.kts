@@ -67,8 +67,10 @@ android {
         }
         debug {
             // Configuration pour le développement
-            applicationIdSuffix = ".debug"
+            // applicationIdSuffix = ".debug" // Désactivé car Google Services n'est configuré que pour cd.ena.mobile
             isDebuggable = true
+            // Désactiver les services Google en debug pour éviter les conflits
+            manifestPlaceholders["useGoogleServices"] = false
         }
     }
 }

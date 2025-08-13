@@ -116,14 +116,14 @@ class PdfGeneratorService {
         
         // Si le dossier Downloads n'est pas accessible, utiliser le dossier externe
         if (!await targetDir.exists()) {
-          targetDir = await getExternalStorageDirectory();
-          if (targetDir != null) {
-            targetDir = Directory('${targetDir.path}/Downloads');
+          final externalDir = await getExternalStorageDirectory();
+          if (externalDir != null) {
+            targetDir = Directory('${externalDir.path}/Downloads');
             await targetDir.create(recursive: true);
           } else {
             throw Exception('Impossible d\'accéder au stockage externe');
           }
-        }
+                }
       } else if (Platform.isIOS) {
         // Sur iOS, utiliser le dossier Documents de l'application
         targetDir = await getApplicationDocumentsDirectory();

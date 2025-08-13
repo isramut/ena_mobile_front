@@ -7,6 +7,7 @@ import '../../services/biometric_service.dart';
 import '../../widgets/error_popup.dart';
 import '../../widgets/page_transitions.dart';
 import 'transition_settings_screen.dart';
+import '../../screens/account_deletion_screen.dart';
 
 class ParametreScreen extends StatefulWidget {
   const ParametreScreen({super.key});
@@ -404,6 +405,46 @@ class _ParametreScreenState extends State<ParametreScreen> {
                         ),
                       ],
                     ),
+                  );
+                },
+                trailing: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Suppression de compte (maintenant en dernier)
+            Card(
+              color: theme.colorScheme.surface,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),
+                title: Text(
+                  "Supprimer mon compte",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    color: Colors.red,
+                  ),
+                ),
+                subtitle: Text(
+                  "Suppression définitive avec délai de 30 jours",
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
+                ),
+                onTap: () {
+                  PageTransitions.push(
+                    context,
+                    const AccountDeletionScreen(),
+                    type: PageTransitionType.slideAndFade,
                   );
                 },
                 trailing: Icon(
