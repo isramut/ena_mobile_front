@@ -202,7 +202,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
             Text(
               '• Toutes vos données seront supprimées\n'
               '• Vous ne pourrez plus accéder à l\'application\n'
-              '• Cette action ne peut pas être annulée après 30 jours',
+              '• Cette action ne peut pas être annulée endéans 30 jours',
               style: GoogleFonts.poppins(
                 fontSize: _getResponsiveFontSize(14),
                 color: theme.textTheme.bodyMedium?.color,
@@ -219,7 +219,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
                 border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
               ),
               child: Text(
-                'Vous recevrez une confirmation par email et aurez 30 jours pour annuler si vous changez d\'avis.',
+                'Vous recevrez une confirmation par email et aurez endéans 30 jours pour annuler si vous changez d\'avis.',
                 style: GoogleFonts.poppins(
                   fontSize: _getResponsiveFontSize(13),
                   color: Colors.blue[700],
@@ -443,7 +443,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Cette action va SUPPRIMER DÉFINITIVEMENT votre compte dans 30 jours.',
+                    'Cette action va SUPPRIMER DÉFINITIVEMENT votre compte endéans 30 jours.',
                     style: GoogleFonts.poppins(
                       fontSize: _getResponsiveFontSize(16),
                       fontWeight: FontWeight.w500,
@@ -452,7 +452,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Vous recevrez une confirmation par email et aurez 30 jours pour annuler si vous changez d\'avis.',
+                    'Vous recevrez une confirmation par email et aurez endéans 30 jours pour annuler si vous changez d\'avis.',
                     style: GoogleFonts.poppins(
                       color: Colors.blue[700], 
                       fontSize: _getResponsiveFontSize(13),
