@@ -21,6 +21,18 @@ class UserInfo {
   final bool? canPublish;
   final String? numero;
   final DateTime? dateCreation;
+  final bool isStaff;
+  final bool isSuperuser;
+  final bool canSubmitRecours;
+  final bool hasSubmittedRecours;
+  final DateTime? debutSession;
+  final DateTime? finSession;
+  final DateTime? debutSoumissionCandidature;
+  final DateTime? finSoumissionCandidature;
+  final DateTime? debutSoumissionRecours;
+  final DateTime? finSoumissionRecours;
+  final int? sessionPromotion;
+  final String? sessionDenomination;
 
   UserInfo({
     required this.id,
@@ -42,6 +54,18 @@ class UserInfo {
     this.canPublish,
     this.numero,
     this.dateCreation,
+    required this.isStaff,
+    required this.isSuperuser,
+    required this.canSubmitRecours,
+    required this.hasSubmittedRecours,
+    this.debutSession,
+    this.finSession,
+    this.debutSoumissionCandidature,
+    this.finSoumissionCandidature,
+    this.debutSoumissionRecours,
+    this.finSoumissionRecours,
+    this.sessionPromotion,
+    this.sessionDenomination,
   });
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
@@ -69,6 +93,30 @@ class UserInfo {
       dateCreation: json['date_creation'] != null 
           ? DateTime.tryParse(json['date_creation']) 
           : null,
+      isStaff: json['is_staff'] ?? false,
+      isSuperuser: json['is_superuser'] ?? false,
+      canSubmitRecours: json['can_submit_recours'] ?? false,
+      hasSubmittedRecours: json['has_submitted_recours'] ?? false,
+      debutSession: json['debut_session'] != null 
+          ? DateTime.tryParse(json['debut_session']) 
+          : null,
+      finSession: json['fin_session'] != null 
+          ? DateTime.tryParse(json['fin_session']) 
+          : null,
+      debutSoumissionCandidature: json['debut_soumission_candidature'] != null 
+          ? DateTime.tryParse(json['debut_soumission_candidature']) 
+          : null,
+      finSoumissionCandidature: json['fin_soumission_candidature'] != null 
+          ? DateTime.tryParse(json['fin_soumission_candidature']) 
+          : null,
+      debutSoumissionRecours: json['debut_soumission_recours'] != null 
+          ? DateTime.tryParse(json['debut_soumission_recours']) 
+          : null,
+      finSoumissionRecours: json['fin_soumission_recours'] != null 
+          ? DateTime.tryParse(json['fin_soumission_recours']) 
+          : null,
+      sessionPromotion: json['session_promotion'],
+      sessionDenomination: json['session_denomination'],
     );
   }
 
@@ -160,10 +208,41 @@ class UserInfo {
 
   /// Méthode de débogage pour vérifier la construction de l'URL
   void debugProfilePictureUrl() {
+  }
 
+  /// Vérifie si nous sommes dans la période de soumission des recours
+  bool get isInRecoursSubmissionPeriod {
+    if (debutSoumissionRecours == null || finSoumissionRecours == null) {
+      return false;
+    }
+    
+    final now = DateTime.now();
+    return now.isAfter(debutSoumissionRecours!) && now.isBefore(finSoumissionRecours!);
+  }
 
+  /// Vérifie si nous sommes dans la période de soumission des candidatures
+  bool get isInCandidatureSubmissionPeriod {
+    if (debutSoumissionCandidature == null || finSoumissionCandidature == null) {
+      return false;
+    }
+    
+    final now = DateTime.now();
+    return now.isAfter(debutSoumissionCandidature!) && now.isBefore(finSoumissionCandidature!);
+  }
 
+  /// Retourne le nombre de jours restants pour soumettre un recours
+  int? get daysLeftForRecours {
+    if (finSoumissionRecours == null) return null;
+    
+    final now = DateTime.now();
+    final difference = finSoumissionRecours!.difference(now).inDays;
+    return difference > 0 ? difference : 0;
+  }
 
-
+  /// Vérifie si l'utilisateur peut actuellement soumettre un recours
+  bool get canCurrentlySubmitRecours {
+    return canSubmitRecours && 
+           !hasSubmittedRecours && 
+           isInRecoursSubmissionPeriod;
   }
 }

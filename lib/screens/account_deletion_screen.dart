@@ -202,7 +202,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
             Text(
               '• Toutes vos données seront supprimées\n'
               '• Vous ne pourrez plus accéder à l\'application\n'
-              '• Cette action ne peut pas être annulée endéans 30 jours',
+              '• Cette action ne peut pas être annulée',
               style: GoogleFonts.poppins(
                 fontSize: _getResponsiveFontSize(14),
                 color: theme.textTheme.bodyMedium?.color,
@@ -214,16 +214,16 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
               width: double.infinity,
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
               child: Text(
-                'Vous recevrez une confirmation par email et aurez endéans 30 jours pour annuler si vous changez d\'avis.',
+                '⚠️ ATTENTION : Cette action est DÉFINITIVE et IRRÉVERSIBLE. Votre compte sera supprimé endéans 30 jours.',
                 style: GoogleFonts.poppins(
                   fontSize: _getResponsiveFontSize(13),
-                  color: Colors.blue[700],
-                  fontWeight: FontWeight.w500,
+                  color: Colors.red[700],
+                  fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -443,7 +443,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Cette action va SUPPRIMER DÉFINITIVEMENT votre compte endéans 30 jours.',
+                    'Cette action va SUPPRIMER DÉFINITIVEMENT votre compte endéans 30 jours. Cette suppression est IRRÉVERSIBLE.',
                     style: GoogleFonts.poppins(
                       fontSize: _getResponsiveFontSize(16),
                       fontWeight: FontWeight.w500,
@@ -451,12 +451,21 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Vous recevrez une confirmation par email et aurez endéans 30 jours pour annuler si vous changez d\'avis.',
-                    style: GoogleFonts.poppins(
-                      color: Colors.blue[700], 
-                      fontSize: _getResponsiveFontSize(13),
-                      fontWeight: FontWeight.w500,
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      'Vous recevrez une confirmation par email. La suppression est définitive et ne peut pas être annulée.',
+                      style: GoogleFonts.poppins(
+                        color: Colors.red[700], 
+                        fontSize: _getResponsiveFontSize(13),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],

@@ -1,11 +1,24 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import '../models/ma_candidature.dart';
+import '../models/recours_models.dart';
 import 'aggressive_cache_service.dart';
 
 /// Service pour gérer les appels API d'authentification
 class AuthApiService {
+  /// Récupère le token d'authentification stocké
+  static Future<String?> _getStoredToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Méthode utilitaire pour gérer les réponses HTTP
   static Map<String, dynamic> _handleHttpResponse(http.Response response) {
     // Vérifier le content-type de la réponse
@@ -609,6 +622,51 @@ class AuthApiService {
     }
   }
 
+  /// Récupère les détails de la candidature de l'utilisateur connecté
+  static Future<Map<String, dynamic>> getMaCandidature({String? token}) async {
+    try {
+      // Récupérer le token stocké si non fourni
+      final authToken = token ?? await _getStoredToken();
+      
+      if (authToken == null) {
+        return {
+          'success': false,
+          'error': 'Token d\'authentification manquant',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/recrutement/ma-candidature'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      final data = json.decode(response.body);
+      
+      if (response.statusCode == 200) {
+        final maCandidature = MaCandidature.fromJson(data);
+        return {
+          'success': true,
+          'data': maCandidature,
+        };
+      } else {
+        return {
+          'success': false,
+          'error': data['message'] ?? data['error'] ?? 'Erreur lors de la récupération de la candidature',
+          'details': data,
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erreur de connexion au serveur',
+        'details': e.toString(),
+      };
+    }
+  }
+
   /// Changement de mot de passe pour l'utilisateur connecté
   static Future<Map<String, dynamic>> selfResetPassword({
     required String token,
@@ -880,5 +938,60 @@ class AuthApiService {
 
       }
     });
+  }
+
+  /// Vérifie si l'utilisateur a déjà soumis un recours
+  static Future<Map<String, dynamic>> hasSubmittedRecours() async {
+    try {
+      final token = await _getStoredToken();
+      
+      if (token == null) {
+        return {
+          'success': false,
+          'error': 'Token d\'authentification manquant',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/users/has-submitted-recours'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        try {
+          final data = json.decode(response.body);
+          final hasSubmitted = HasSubmittedRecours.fromJson(data);
+          
+          return {
+            'success': true,
+            'data': hasSubmitted,
+          };
+        } catch (parseError) {
+          return {
+            'success': false,
+            'error': 'Erreur de parsing de la réponse: $parseError',
+          };
+        }
+      } else if (response.statusCode == 401) {
+        return {
+          'success': false,
+          'error': 'Token d\'authentification invalide',
+        };
+      } else {
+        final data = _handleHttpResponse(response);
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Erreur lors de la vérification du recours',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erreur de connexion: $e',
+      };
+    }
   }
 }
