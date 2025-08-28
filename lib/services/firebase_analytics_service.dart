@@ -27,16 +27,16 @@ class FirebaseAnalyticsService {
         },
       );
       if (kDebugMode) {
-        print('📊 Analytics: Candidature started');
+        //print('📊 Analytics: Candidature started');
       }
       // Log en release aussi pour vérifier
-      print('🔥 Firebase: Candidature started (${kDebugMode ? 'DEBUG' : 'RELEASE'})');
+      //print('🔥 Firebase: Candidature started (${kDebugMode ? 'DEBUG' : 'RELEASE'})');
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Analytics Error (candidature_started): $e');
+        //print('❌ Analytics Error (candidature_started): $e');
       }
       // Log des erreurs en release pour diagnostic
-      print('🚨 Firebase Error: $e');
+      //print('🚨 Firebase Error: $e');
     }
   }
 
@@ -52,11 +52,11 @@ class FirebaseAnalyticsService {
         },
       );
       if (kDebugMode) {
-        print('📊 Analytics: Step $stepNumber ($stepName) reached');
+        //print('📊 Analytics: Step $stepNumber ($stepName) reached');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Analytics Error (candidature_step_progress): $e');
+        //print('❌ Analytics Error (candidature_step_progress): $e');
       }
     }
   }

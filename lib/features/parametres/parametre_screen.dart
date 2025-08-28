@@ -434,7 +434,7 @@ class _ParametreScreenState extends State<ParametreScreen> {
                   ),
                 ),
                 subtitle: Text(
-                  "Suppression définitive avec délai de 30 jours",
+                  "Suppression définitive de votre compte et de toutes les informations y relatives",
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     color: theme.textTheme.bodySmall?.color,

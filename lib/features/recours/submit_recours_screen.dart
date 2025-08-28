@@ -44,7 +44,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
     'piece_identite': 'Pièce d\'identité',
     'aptitude_physique': 'Aptitude physique',
     'diplome': 'Diplôme',
-    'releve_notes': 'Relevé des notes de la dernière année'
+    'releves_notes': 'Relevé des notes de la dernière année'
   };
 
   @override
@@ -59,6 +59,10 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
       _documentsToResubmit[doc] = false;
       _selectedFiles[doc] = null;
     }
+    
+    // Initialiser le relevé des notes (affiché statiquement)
+    _documentsToResubmit['releves_notes'] = false;
+    _selectedFiles['releves_notes'] = null;
   }
 
   @override
@@ -146,6 +150,21 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
       return;
     }
 
+    // Vérification OBLIGATOIRE du relevé des notes
+    if (_selectedFiles['releves_notes'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '📄 Le relevé des notes de la dernière année est obligatoire pour soumettre un recours',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
@@ -153,10 +172,21 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
     try {
       // Préparer les fichiers sélectionnés
       List<File> filesToUpload = [];
+      List<String> documentTypes = [];
+      
       for (String docType in _documentsToResubmit.keys) {
         if (_documentsToResubmit[docType] == true && _selectedFiles[docType] != null) {
           filesToUpload.add(_selectedFiles[docType]!);
+          documentTypes.add(docType);
         }
+      }
+
+      // ✅ S'assurer que le relevé des notes est inclus s'il a été sélectionné
+      if (_selectedFiles['releves_notes'] != null && 
+          _documentsToResubmit['releves_notes'] == true &&
+          !documentTypes.contains('releves_notes')) {
+        filesToUpload.add(_selectedFiles['releves_notes']!);
+        documentTypes.add('releves_notes');
       }
 
       // Combiner motif et justification comme une lettre officielle
@@ -167,10 +197,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
         motifRejet: _selectedMotif!,
         justification: lettreComplete,
         documents: filesToUpload,
-        documentTypes: _documentsToResubmit.entries
-            .where((entry) => entry.value)
-            .map((entry) => entry.key)
-            .toList(),
+        documentTypes: documentTypes,
       );
 
       if (mounted) {
@@ -328,7 +355,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
               '$label :',
               style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w500,
-                color: isDarkMode ? theme.colorScheme.onSurface.withOpacity(0.7) : Colors.grey[700],
+                color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : Colors.grey[700],
               ),
             ),
           ),
@@ -372,7 +399,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                 decoration: InputDecoration(
                   hintText: 'Sélectionnez le motif de votre recours',
                   hintStyle: GoogleFonts.poppins(
-                    color: isDarkMode ? theme.colorScheme.onSurface.withOpacity(0.6) : Colors.grey[600],
+                    color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.6) : Colors.grey[600],
                     fontSize: isSmallScreen ? 14 : 16,
                   ),
                   border: OutlineInputBorder(
@@ -463,7 +490,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                 decoration: InputDecoration(
                   hintText: 'Décrivez en détail les raisons de votre recours...',
                   hintStyle: GoogleFonts.poppins(
-                    color: isDarkMode ? theme.colorScheme.onSurface.withOpacity(0.6) : Colors.grey[600],
+                    color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.6) : Colors.grey[600],
                     fontSize: isSmallScreen ? 14 : 16,
                   ),
                   border: OutlineInputBorder(
@@ -532,7 +559,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
             Text(
               'Sélectionnez les documents que vous souhaitez resoummettre pour corriger les problèmes identifiés.',
               style: GoogleFonts.poppins(
-                color: isDarkMode ? theme.colorScheme.onSurface.withOpacity(0.7) : Colors.grey[600],
+                color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : Colors.grey[600],
                 fontSize: isSmallScreen ? 13 : 14,
               ),
             ),
@@ -543,7 +570,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                 child: Text(
                   'Aucun document non conforme identifié',
                   style: GoogleFonts.poppins(
-                    color: isDarkMode ? theme.colorScheme.onSurface.withOpacity(0.6) : Colors.grey[600],
+                    color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.6) : Colors.grey[600],
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -555,7 +582,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
             
             // Champ statique pour le relevé des notes
             const SizedBox(height: 8),
-            _buildDocumentUploadRow('releve_notes', theme, isSmallScreen, isDarkMode),
+            _buildDocumentUploadRow('releves_notes', theme, isSmallScreen, isDarkMode),
           ],
         ),
       ),
@@ -579,7 +606,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
         ),
         borderRadius: BorderRadius.circular(12),
         color: isSelected 
-          ? theme.colorScheme.primary.withOpacity(isDarkMode ? 0.15 : 0.05) 
+          ? theme.colorScheme.primary.withValues(alpha: isDarkMode ? 0.15 : 0.05) 
           : isDarkMode ? theme.colorScheme.surface : Colors.white,
       ),
       child: Column(
@@ -642,7 +669,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
               Container(
                 padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                 decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.green[900]?.withOpacity(0.3) : Colors.green[50],
+                  color: isDarkMode ? Colors.green[900]?.withValues(alpha: 0.3) : Colors.green[50],
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isDarkMode ? Colors.green[400]! : Colors.green[200]!,
@@ -676,7 +703,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
               'Formats acceptés: PDF, Word, JPG, JPEG, PNG (max 5 Mo)',
               style: GoogleFonts.poppins(
                 fontSize: isSmallScreen ? 11 : 12,
-                color: isDarkMode ? theme.colorScheme.onSurface.withOpacity(0.6) : Colors.grey[600],
+                color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.6) : Colors.grey[600],
               ),
             ),
           ],

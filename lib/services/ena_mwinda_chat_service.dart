@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:dart_openai/dart_openai.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 
 class EnaMwindaChatService {
-  static GenerativeModel? _model;
-  static ChatSession? _chatSession;
+  static bool _isInitialized = false;
+  static List<OpenAIChatCompletionChoiceMessageModel> _conversationHistory = [];
   static int _offTopicCount = 0;
 
   // Cache des informations importantes pour éviter les recherches répétées
@@ -152,22 +152,24 @@ Dites-moi, que souhaitez-vous savoir ? 🌟''',
 ✅ GUIDE EXPERTEMENT les utilisateurs dans l'application MyENA avec des instructions CLAIRES et des émojis.''';
 
   static Future<void> initialize() async {
-    _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
-      apiKey: ApiConfig.geminiApiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.6, // Réduit pour plus de précision et cohérence
-        topK: 40,
-        topP: 0.9,
-        maxOutputTokens: 250, // Réduit pour des réponses plus concises
+    OpenAI.apiKey = ApiConfig.openaiApiKey;
+    OpenAI.requestsTimeOut = const Duration(seconds: 30);
+    
+    // Ajouter le prompt système à l'historique
+    _conversationHistory.add(
+      OpenAIChatCompletionChoiceMessageModel(
+        content: [
+          OpenAIChatCompletionChoiceMessageContentItemModel.text(systemPrompt)
+        ],
+        role: OpenAIChatMessageRole.system,
       ),
     );
-
-    _chatSession = _model!.startChat(history: [Content.text(systemPrompt)]);
+    
+    _isInitialized = true;
   }
 
   static Future<String> sendMessage(String userMessage) async {
-    if (_chatSession == null) {
+    if (!_isInitialized) {
       await initialize();
     }
 
@@ -224,12 +226,39 @@ Revenons plutôt à l'ENA : avez-vous des questions sur nos formations, les proc
         }
       }
 
-      final response = await _chatSession!.sendMessage(
-        Content.text(enhancedMessage),
+      // Ajouter le message utilisateur à l'historique
+      _conversationHistory.add(
+        OpenAIChatCompletionChoiceMessageModel(
+          content: [
+            OpenAIChatCompletionChoiceMessageContentItemModel.text(enhancedMessage)
+          ],
+          role: OpenAIChatMessageRole.user,
+        ),
       );
 
-      return response.text ??
-          "Désolé, je n'ai pas pu traiter votre demande. Pouvez-vous reformuler ?";
+      // Appel à l'API OpenAI
+      final response = await OpenAI.instance.chat.create(
+        model: "gpt-4o-mini",
+        messages: _conversationHistory,
+        temperature: 0.6,
+        maxTokens: 250,
+        topP: 0.9,
+      );
+
+      String botResponse = response.choices.first.message.content?.first.text ?? 
+                          "Désolé, je n'ai pas pu traiter votre demande.";
+
+      // Ajouter la réponse du bot à l'historique
+      _conversationHistory.add(
+        OpenAIChatCompletionChoiceMessageModel(
+          content: [
+            OpenAIChatCompletionChoiceMessageContentItemModel.text(botResponse)
+          ],
+          role: OpenAIChatMessageRole.assistant,
+        ),
+      );
+
+      return botResponse;
     } catch (e) {
       return "Une erreur s'est produite. Veuillez réessayer dans un moment.";
     }
@@ -660,9 +689,10 @@ Comment puis-je vous accompagner dans vos démarches liées à l'ENA ? ✨''';
   }
 
   static void resetChat() {
-    _chatSession = null;
+    _conversationHistory.clear();
     _offTopicCount = 0;
     _infoCache.clear();
+    _isInitialized = false;
   }
   // Base de données institutionnelle enrichie
   static const Map<String, String> _institutionalData = {

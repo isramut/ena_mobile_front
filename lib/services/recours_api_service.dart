@@ -395,7 +395,7 @@ class RecoursApiService {
   static Map<String, String> getDocumentsLabels() {
     return {
       'piece_identite': 'Pièce d\'identité',
-      'releve_notes': 'Relevé de notes',
+      'releves_notes': 'Relevé de notes',
       'justificatif_domicile': 'Justificatif de domicile',
       'lettre_motivation': 'Lettre de motivation',
       'cv': 'Curriculum Vitae',

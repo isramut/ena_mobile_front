@@ -172,6 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
           final hasStoredCredentials = await BiometricAuthService.hasStoredCredentials();
           
           if (isDeviceSupported && !hasStoredCredentials && result['token'] != null) {
+            if (!mounted) return;
             await BiometricSetupPopup.show(
               context,
               token: result['token'],
@@ -183,6 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
           
+          if (!mounted) return;
           PageTransitions.pushReplacement(
             context,
             const MainRouter(),

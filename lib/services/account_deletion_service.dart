@@ -20,6 +20,7 @@ class AccountDeletionService {
   /// 
   /// [reason] : Raison optionnelle de la suppression
   /// [deletionType] : Type de suppression ('complete' ou 'partial') - optionnel
+  /// [verificationMethod] : Méthode de vérification ('email_otp' ou 'id_upload') - optionnel
   /// 
   /// Retourne une Map avec:
   /// - success: bool
@@ -28,6 +29,7 @@ class AccountDeletionService {
   static Future<Map<String, dynamic>> requestAccountDeletion({
     String? reason,
     String? deletionType,
+    String? verificationMethod,
     String? token,
   }) async {
     try {
@@ -46,6 +48,9 @@ class AccountDeletionService {
       }
       if (deletionType != null && deletionType.trim().isNotEmpty) {
         payload['deletion_type'] = deletionType.trim();
+      }
+      if (verificationMethod != null && verificationMethod.trim().isNotEmpty) {
+        payload['verification_method'] = verificationMethod.trim();
       }
 
       final response = await http.post(

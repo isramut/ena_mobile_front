@@ -27,6 +27,7 @@ dependencies:
   carousel_slider: ^5.1.1
   provider: ^6.1.2
   google_generative_ai: ^0.4.6
+  dart_openai: ^5.1.0
   intl: ^0.20.2
   permission_handler: ^11.3.1
   pdf: ^3.11.1

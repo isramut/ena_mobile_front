@@ -24,6 +24,7 @@ class _ContactPageState extends State<ContactPage> {
       query: 'subject=Demande%20d\'information%20ENA',
     );
     if (!await launchUrl(url)) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Impossible d'ouvrir votre application email."),
@@ -35,6 +36,7 @@ class _ContactPageState extends State<ContactPage> {
   void _launchPhone() async {
     final url = Uri.parse('tel:+243832222920');
     if (!await launchUrl(url)) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Impossible de lancer l'appel.")),
       );
@@ -44,6 +46,7 @@ class _ContactPageState extends State<ContactPage> {
   void _launchMaps() async {
     final url = Uri.parse('https://maps.google.com/?q=ENA,+Kinshasa');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Impossible d'ouvrir Google Maps.")),
       );
@@ -73,6 +76,7 @@ class _ContactPageState extends State<ContactPage> {
     try {
       if (await launchUrl(url)) {
         setState(() => loading = false);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Application email ouverte avec succès !")),
         );
@@ -89,6 +93,7 @@ class _ContactPageState extends State<ContactPage> {
       }
     } catch (e) {
       setState(() => loading = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Impossible d'ouvrir votre application email. Veuillez vérifier qu'une application email est installée."),

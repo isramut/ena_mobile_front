@@ -122,9 +122,11 @@ class _TransitionSettingsScreenState extends State<TransitionSettingsScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Réinitialiser',
             onPressed: () async {
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
               await TransitionPreferencesService.resetToDefault();
               await _loadCurrentPreferences();
-              ScaffoldMessenger.of(context).showSnackBar(
+              if (!mounted) return;
+              scaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(
                     '🔄 Paramètres réinitialisés',

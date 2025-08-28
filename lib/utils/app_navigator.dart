@@ -30,6 +30,7 @@ class AppNavigator {
     // Sinon, charger les préférences utilisateur
     try {
       final prefs = await TransitionPreferencesService.loadTransitionPreferences();
+      if (!context.mounted) return null;
       return PageTransitions.push<T>(
         context,
         page,
@@ -39,6 +40,7 @@ class AppNavigator {
       );
     } catch (e) {
       // En cas d'erreur, utiliser une transition par défaut
+      if (!context.mounted) return null;
       return PageTransitions.push<T>(
         context,
         page,
@@ -73,6 +75,7 @@ class AppNavigator {
     // Sinon, charger les préférences utilisateur
     try {
       final prefs = await TransitionPreferencesService.loadTransitionPreferences();
+      if (!context.mounted) return null;
       return PageTransitions.pushReplacement<T, TO>(
         context,
         page,
@@ -83,6 +86,7 @@ class AppNavigator {
       );
     } catch (e) {
       // En cas d'erreur, utiliser une transition par défaut
+      if (!context.mounted) return null;
       return PageTransitions.pushReplacement<T, TO>(
         context,
         page,

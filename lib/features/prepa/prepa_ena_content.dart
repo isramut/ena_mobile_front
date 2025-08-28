@@ -684,6 +684,9 @@ class _PrepaEnaContentState extends State<PrepaEnaContent> {
     const String guideUrl =
         "https://ena.cd/wp-content/uploads/2025/06/GUIDE-DE-PREPA-AU-CONCOURS-DENTREE-A-LENA-RDC-1-1.pdf";
 
+    // Capturer ScaffoldMessenger avant les opérations async
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     try {
       final Uri uri = Uri.parse(guideUrl);
 
@@ -702,7 +705,8 @@ class _PrepaEnaContentState extends State<PrepaEnaContent> {
 
       if (!success) {
         // Notification d'erreur si aucune méthode ne fonctionne
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: const Text(
               "Impossible d'ouvrir le guide PDF. Vérifiez votre connexion internet.",
@@ -716,7 +720,8 @@ class _PrepaEnaContentState extends State<PrepaEnaContent> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text("Erreur: ${e.toString()}"),
           backgroundColor: Colors.red,
