@@ -14,6 +14,7 @@ import '../../models/user_info.dart';
 import '../../models/candidature_info.dart';
 import '../../models/notification.dart';
 import '../../models/program_event.dart';
+import '../../models/recours_models.dart';
 import '../../widgets/program_events_popup.dart';
 import '../../features/recours/recours_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
@@ -36,6 +37,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
   bool _isLoading = true;
   bool _hasApplied = false;
   bool _isLoadingEvents = false;
+  HasSubmittedRecours? _recoursInfo;
 
   @override
   void initState() {
@@ -156,6 +158,15 @@ class _AccueilScreenState extends State<AccueilScreen> {
           programEvents = eventsResult['data'] as List<ProgramEvent>;
         }
 
+        // Informations de recours si l'utilisateur en a soumis un
+        HasSubmittedRecours? recoursInfo;
+        if (userInfo.hasSubmittedRecours) {
+          final recoursResult = await AuthApiService.hasSubmittedRecours();
+          if (recoursResult['success'] == true && recoursResult['data'] != null) {
+            recoursInfo = recoursResult['data'] as HasSubmittedRecours;
+          }
+        }
+
         // 5️⃣ MISE À JOUR SYNCHRONE DE TOUTE L'INTERFACE
         setState(() {
           _userInfo = userInfo;
@@ -163,6 +174,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
           _candidatureInfo = candidatureInfo;
           _notifications = notifications;
           _programEvents = programEvents;
+          _recoursInfo = recoursInfo;
           _isLoading = false;
         });
 
@@ -217,8 +229,19 @@ class _AccueilScreenState extends State<AccueilScreen> {
               if (candidature.candidat == userInfo.id) {
                 setState(() {
                   _candidatureInfo = candidature;
-                  _isLoading = false;
                 });
+                
+                // Étape 4: Si l'utilisateur a soumis un recours, récupérer les détails
+                if (userInfo.hasSubmittedRecours) {
+                  final recoursResult = await AuthApiService.hasSubmittedRecours();
+                  if (mounted && recoursResult['success'] == true && recoursResult['data'] != null) {
+                    setState(() {
+                      _recoursInfo = recoursResult['data'] as HasSubmittedRecours;
+                    });
+                  }
+                }
+                
+                setState(() => _isLoading = false);
               } else {
                 setState(() => _isLoading = false);
               }
@@ -377,6 +400,14 @@ class _AccueilScreenState extends State<AccueilScreen> {
     return formatter.format(date);
   }
 
+  String? _getVerificationEndDate() {
+    if (_candidatureInfo?.dateCreation != null) {
+      final endDate = _candidatureInfo!.dateCreation.add(const Duration(days: 20));
+      return _formatDate(endDate);
+    }
+    return null;
+  }
+
   String? _getCurrentStepText() {
     // Si has_applied = false : afficher bouton "Soumettre ma candidature"
     if (!_hasApplied) return null;
@@ -418,11 +449,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
         }
         return null; // Si can_publish est false, pas de message spécial
       case 'rejete':
-        // Afficher le message de rejet uniquement si can_publish est true
-        if (_userInfo?.canPublish == true) {
+        // Afficher le message de rejet uniquement si can_publish est true ET que l'utilisateur n'a pas soumis de recours
+        if (_userInfo?.canPublish == true && !(_userInfo?.hasSubmittedRecours ?? false)) {
           return "Votre dossier de candidature n'a malheureusement pas répondu à toutes les exigences requises. Nous vous remercions de votre intérêt et de la confiance accordée à l'ENA. Un email vous sera envoyé vous notifiant les raisons du rejet et vous pouvez déposer un recours endéans 48h.";
         }
-        return null; // Si can_publish est false, pas de message spécial
+        return null; // Si can_publish est false ou recours déjà soumis, pas de message spécial
       default:
         return null;
     }
@@ -1040,8 +1071,8 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 ),
               ),
               
-              // Bouton recours pour les candidatures rejetées
-              if (_candidatureInfo?.statut == 'rejete') ...[
+              // Bouton recours pour les candidatures rejetées (seulement si pas de recours soumis)
+              if (_candidatureInfo?.statut == 'rejete' && !(_userInfo?.hasSubmittedRecours ?? false)) ...[
                 SizedBox(height: isNarrowScreen ? 8 : 12),
                 SizedBox(
                   width: double.infinity,
@@ -1082,6 +1113,21 @@ class _AccueilScreenState extends State<AccueilScreen> {
               isNarrowScreen: isNarrowScreen,
               isVeryNarrowScreen: isVeryNarrowScreen,
             ),
+            // Étape Recours si candidature rejetée et recours soumis
+            if (_candidatureInfo?.statut == 'rejete' && _userInfo?.hasSubmittedRecours == true && _recoursInfo != null) ...[
+              _buildStepRow(
+                color: _recoursInfo!.traite == true ? const Color(0xFF27AE60) : const Color(0xFFFF8C00),
+                icon: _recoursInfo!.traite == true ? Icons.check_circle : Icons.timelapse_rounded,
+                title: "Recours",
+                subtitle: _recoursInfo!.traite == true ? "Recours traité" : "",
+                done: _recoursInfo!.traite == true,
+                active: _recoursInfo!.traite != true,
+                date: _recoursInfo!.dateSoumissionRecours != null ? _formatDate(_recoursInfo!.dateSoumissionRecours!) : null,
+                customBadgeText: _recoursInfo!.traite == true ? "Traité" : "En cours de traitement",
+                isNarrowScreen: isNarrowScreen,
+                isVeryNarrowScreen: isVeryNarrowScreen,
+              ),
+            ],
             _buildStepRow(
               color: Colors.white.withValues(alpha: 0.45),
               icon: Icons.radio_button_unchecked,
@@ -1147,7 +1193,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
           color = const Color(0xFF27AE60);
           icon = Icons.check_circle;
           subtitle = "Candidature soumise avec succès";
-          badgeText = "Terminé";
+          badgeText = "Terminée";
           done = true;
           active = false;
           // Date de soumission OBLIGATOIRE (date_creation de la candidature)
@@ -1198,17 +1244,26 @@ class _AccueilScreenState extends State<AccueilScreen> {
               break;
             case 'valide':
             case 'rejete':
-              // Afficher comme terminé uniquement si can_publish est true
-              if (_userInfo?.canPublish == true) {
+              // Si un recours a été soumis, la vérification est forcément terminée
+              if (_userInfo?.hasSubmittedRecours == true) {
                 color = const Color(0xFF27AE60);
                 icon = Icons.check_circle;
-                subtitle = "Vérification des documents";
+                subtitle = "Terminée le ${_getVerificationEndDate() ?? 'Date inconnue'}";
                 badgeText = "Terminée";
                 done = true;
                 active = false;
-                date = null; // Pas de date pour "Terminée"
+                date = null;
+              } else if (_userInfo?.canPublish == true) {
+                // Afficher comme terminé uniquement si can_publish est true
+                color = const Color(0xFF27AE60);
+                icon = Icons.check_circle;
+                subtitle = "Terminée le ${_getVerificationEndDate() ?? 'Date inconnue'}";
+                badgeText = "Terminée";
+                done = true;
+                active = false;
+                date = null;
               } else {
-                // Si can_publish est false, afficher comme en cours
+                // Si can_publish est false et pas de recours, afficher comme en cours
                 color = const Color(0xFF3678FF);
                 icon = Icons.timelapse_rounded;
                 subtitle = "Vérification des documents";
@@ -1284,18 +1339,20 @@ class _AccueilScreenState extends State<AccueilScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.poppins(
-                    color: done
-                        ? Colors.white.withValues(alpha: .93)
-                        : Colors.white70,
-                    fontSize: isVeryNarrowScreen ? 10 : (isNarrowScreen ? 11 : 12),
-                    height: 1.2,
+                if (subtitle.isNotEmpty) ...[
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      color: done
+                          ? Colors.white.withValues(alpha: .93)
+                          : Colors.white70,
+                      fontSize: isVeryNarrowScreen ? 10 : (isNarrowScreen ? 11 : 12),
+                      height: 1.2,
+                    ),
+                    maxLines: isVeryNarrowScreen ? 2 : 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: isVeryNarrowScreen ? 2 : 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
                 if (date != null && (done || active)) ...[
                   Text(
                     "Complété le $date",
@@ -1322,7 +1379,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 color: done
                     ? const Color(0xFFCBF3E2)
                     : active
-                        ? const Color(0xFFD5E6FA)
+                        ? (color == const Color(0xFFFF8C00) // Si couleur orange (recours)
+                            ? const Color(0xFFFFE4B5) // Fond orange clair
+                            : const Color(0xFFD5E6FA)) // Fond bleu clair standard
                         : Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(isVeryNarrowScreen ? 6 : 9),
               ),
@@ -1332,7 +1391,9 @@ class _AccueilScreenState extends State<AccueilScreen> {
                   color: done
                       ? const Color(0xFF27AE60)
                       : active
-                          ? const Color(0xFF3678FF)
+                          ? (color == const Color(0xFFFF8C00) // Si couleur orange (recours)
+                              ? const Color(0xFFFF8C00) // Texte orange
+                              : const Color(0xFF3678FF)) // Texte bleu standard
                           : Colors.white70,
                   fontWeight: FontWeight.w600,
                   fontSize: isVeryNarrowScreen ? 8 : (isNarrowScreen ? 9 : 10),

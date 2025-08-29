@@ -877,7 +877,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                 : Colors.grey[700],
                                           ),
                                           children: [
-                                            const TextSpan(text: "J'accepte les "),
+                                            const TextSpan(text: "J'ai lu et j'accepte les "),
                                             TextSpan(
                                               text: "conditions d'utilisation et la politique de confidentialité",
                                               style: GoogleFonts.poppins(
