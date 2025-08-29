@@ -1080,6 +1080,9 @@ class _RecoursScreenState extends State<RecoursScreen> {
               ),
             ),
           ),
+          
+          // Espacement pour éviter que le bouton soit masqué par la barre de navigation
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
         ] else ...[
           const SizedBox(height: 20),
           // Card quand pas de rejet
@@ -1125,6 +1128,9 @@ class _RecoursScreenState extends State<RecoursScreen> {
               ),
             ),
           ),
+          
+          // Espacement pour éviter que le bouton soit masqué par la barre de navigation
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
         ],
       ],
     );

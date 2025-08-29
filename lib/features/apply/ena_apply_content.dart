@@ -133,7 +133,7 @@ class PostulerContent extends StatelessWidget {
                   theme,
                 ),
                 _fileRow(
-                  "Diplôme Bac+5 ou équivalent (ou relevé dernière année)",
+                  "Diplôme Bac+5 ou équivalent",
                   Icons.school_outlined,
                   theme,
                 ),

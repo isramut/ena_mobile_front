@@ -141,7 +141,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Veuillez sélectionner au moins un document à resoummettre',
+            'Veuillez sélectionner au moins un document à resoumettre',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: Colors.red,
@@ -295,12 +295,15 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                       _buildJustificationField(theme, isSmallScreen, isDarkMode),
                       const SizedBox(height: 24),
               
-                      // Documents à resoummettre
+                      // Documents à resoumettre
                       _buildDocumentsSection(theme, isSmallScreen, isDarkMode),
                       const SizedBox(height: 32),
               
                       // Bouton de soumission
                       _buildSubmitButton(theme, isSmallScreen, isDarkMode),
+                      
+                      // Espacement pour éviter que le bouton soit masqué par la barre de navigation
+                      SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
                     ],
                   ),
                 ),
@@ -548,7 +551,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Documents à resoummettre',
+              'Documents à resoumettre',
               style: GoogleFonts.poppins(
                 fontSize: isSmallScreen ? 16 : 18,
                 fontWeight: FontWeight.w600,
@@ -557,7 +560,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Sélectionnez les documents que vous souhaitez resoummettre pour corriger les problèmes identifiés.',
+              'Sélectionnez les documents que vous souhaitez resoumettre pour corriger les problèmes identifiés.',
               style: GoogleFonts.poppins(
                 color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : Colors.grey[600],
                 fontSize: isSmallScreen ? 13 : 14,
