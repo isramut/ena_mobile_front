@@ -167,7 +167,9 @@ class _RecoursScreenState extends State<RecoursScreen> {
     if (docLower.contains('diplôme') || docLower.contains('diplome')) return maCandidature!.diplome;
     if (docLower.contains('lettre')) return maCandidature!.lettreMotivation;
     if (docLower.contains('pièce') || docLower.contains('piece') || 
-        docLower.contains('identité') || docLower.contains('identite')) return maCandidature!.pieceIdentite;
+        docLower.contains('identité') || docLower.contains('identite')) {
+      return maCandidature!.pieceIdentite;
+    }
     if (docLower.contains('aptitude')) return maCandidature!.aptitudePhysique;
     
     return null;

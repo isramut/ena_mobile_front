@@ -5,7 +5,7 @@ import '../config/api_config.dart';
 
 class EnaMwindaChatService {
   static bool _isInitialized = false;
-  static List<OpenAIChatCompletionChoiceMessageModel> _conversationHistory = [];
+  static final List<OpenAIChatCompletionChoiceMessageModel> _conversationHistory = [];
   static int _offTopicCount = 0;
 
   // Cache des informations importantes pour éviter les recherches répétées

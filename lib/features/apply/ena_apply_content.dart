@@ -117,12 +117,12 @@ class PostulerContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 11),
                 _fileRow(
-                  "Carte d'électeur certifiée ou passeport",
+                  "Carte d'électeur ou passeport valide",
                   Icons.credit_card,
                   theme,
                 ),
                 _fileRow(
-                  "Lettre de motivation manuscrite\n(adressée au Directeur Général)",
+                  "Lettre de motivation manuscrite\n(adressée au Directeur Général de l'ENA)",
                   Icons.description_outlined,
                   theme,
                 ),
@@ -138,7 +138,12 @@ class PostulerContent extends StatelessWidget {
                   theme,
                 ),
                 _fileRow(
-                  "Attestation d'aptitude physique de moins de 3 mois\n(par hôpital public)",
+                  "Relevé de notes de la dernière année",
+                  Icons.grading_outlined,
+                  theme,
+                ),
+                _fileRow(
+                  "Attestation d'aptitude physique de moins de 3 mois\n(par un hôpital public)",
                   Icons.health_and_safety_outlined,
                   theme,
                 ),

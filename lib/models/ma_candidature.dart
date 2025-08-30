@@ -88,7 +88,9 @@ class MaCandidature {
     if (docLower.contains('diplôme') || docLower.contains('diplome')) return diplome;
     if (docLower.contains('lettre')) return lettreMotivation;
     if (docLower.contains('pièce') || docLower.contains('piece') || 
-        docLower.contains('identité') || docLower.contains('identite')) return pieceIdentite;
+        docLower.contains('identité') || docLower.contains('identite')) {
+      return pieceIdentite;
+    }
     if (docLower.contains('aptitude')) return aptitudePhysique;
     
     return null;
@@ -126,7 +128,9 @@ class MaCandidature {
     if (docLower.contains('diplôme') || docLower.contains('diplome')) return 'diplome';
     if (docLower.contains('lettre')) return 'lettre_motivation';
     if (docLower.contains('pièce') || docLower.contains('piece') || 
-        docLower.contains('identité') || docLower.contains('identite')) return 'piece_identite';
+        docLower.contains('identité') || docLower.contains('identite')) {
+      return 'piece_identite';
+    }
     if (docLower.contains('aptitude')) return 'aptitude_physique';
     
     // Si pas de correspondance, retourner le nom original

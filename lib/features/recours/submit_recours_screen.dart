@@ -20,14 +20,15 @@ class SubmitRecoursScreen extends StatefulWidget {
 class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
   final _formKey = GlobalKey<FormState>();
   final _justificationController = TextEditingController();
+  final _autreMotifController = TextEditingController(); // Pour l'autre motif personnalisé
   
   // Variables pour le formulaire
   String? _selectedMotif;
   bool _isSubmitting = false;
   
   // Map pour stocker les fichiers sélectionnés par document
-  Map<String, File?> _selectedFiles = {};
-  Map<String, bool> _documentsToResubmit = {};
+  final Map<String, File?> _selectedFiles = {};
+  final Map<String, bool> _documentsToResubmit = {};
   
   // Liste des motifs de recours
   final List<String> _motifsRecours = [
@@ -68,6 +69,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
   @override
   void dispose() {
     _justificationController.dispose();
+    _autreMotifController.dispose();
     super.dispose();
   }
 
@@ -121,50 +123,247 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
     }
   }
 
+  // ========== MÉTHODE POUR AFFICHER LE POP-UP DE VALIDATION ==========
+  Future<void> _showValidationErrorDialog(List<String> champsManquants) async {
+    final theme = Theme.of(context);
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+    
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: isSmallScreen ? 24 : 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Champs manquants',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isSmallScreen ? 16 : 18,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.4,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Veuillez compléter les éléments suivants :',
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...champsManquants.map((champ) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    champ,
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 13 : 14,
+                      color: Colors.red.shade700,
+                      height: 1.3,
+                    ),
+                  ),
+                )),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.primary,
+            ),
+            child: Text(
+              'Fermer',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ========== MÉTHODE POUR AFFICHER LES ERREURS DE SOUMISSION ==========
+  Future<void> _showSubmissionErrorDialog(String titre, String message, {IconData? icone}) async {
+    final theme = Theme.of(context);
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+    
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              icone ?? Icons.error_outline,
+              color: Colors.red,
+              size: isSmallScreen ? 24 : 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                titre,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isSmallScreen ? 16 : 18,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.5,
+          ),
+          child: SingleChildScrollView(
+            child: Text(
+              message,
+              style: GoogleFonts.poppins(
+                fontSize: isSmallScreen ? 14 : 16,
+                color: theme.colorScheme.onSurface,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.primary,
+            ),
+            child: Text(
+              'Fermer',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ========== MÉTHODE POUR AFFICHER LE SUCCÈS ==========
+  Future<void> _showSuccessDialog() async {
+    final theme = Theme.of(context);
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+    
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              color: Colors.green,
+              size: isSmallScreen ? 24 : 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Succès',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isSmallScreen ? 16 : 18,
+                  color: Colors.green,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Votre recours a été soumis avec succès. Vous recevrez une confirmation par email.',
+          style: GoogleFonts.poppins(
+            fontSize: isSmallScreen ? 14 : 16,
+            color: theme.colorScheme.onSurface,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Fermer le dialog
+              Navigator.of(context).pop(true); // Retourner à l'écran précédent
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.green,
+            ),
+            child: Text(
+              'OK',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitRecours() async {
-    if (!_formKey.currentState!.validate()) return;
+    // ========== VALIDATION COMPLÈTE ==========
+    List<String> champsManquants = [];
+
+    // 1. Validation motif
     if (_selectedMotif == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Veuillez sélectionner un motif de recours',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+      champsManquants.add("• Motif du recours");
+    } else if (_selectedMotif == "Autre motif" && _autreMotifController.text.trim().isEmpty) {
+      champsManquants.add("• Autre motif (description)");
     }
 
-    // Vérifier qu'au moins un document est sélectionné pour resoumission
-    if (!_documentsToResubmit.values.any((selected) => selected)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Veuillez sélectionner au moins un document à resoumettre',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    // 2. Validation justification
+    final justificationText = _justificationController.text.trim();
+    if (justificationText.isEmpty) {
+      champsManquants.add("• Justification détaillée");
+    } else if (justificationText.length < 20) {
+      champsManquants.add("• Justification trop courte (minimum 20 caractères)");
     }
 
-    // Vérification OBLIGATOIRE du relevé des notes
+    // 3. Validation STRICTE des documents à resoumettre
+    // TOUS les documents non conformes DOIVENT être resoumis
+    for (String docType in _documentsToResubmit.keys) {
+      String displayName = _documentDisplayNames[docType] ?? docType;
+      
+      // Vérifier si le document est coché pour resoumission
+      if (_documentsToResubmit[docType] != true) {
+        champsManquants.add("• Document obligatoire à resoumettre : $displayName");
+      } 
+      // Si coché, vérifier qu'un fichier est uploadé
+      else if (_selectedFiles[docType] == null) {
+        champsManquants.add("• Fichier manquant pour : $displayName");
+      }
+    }
+
+    // 4. Validation obligatoire du relevé des notes
     if (_selectedFiles['releves_notes'] == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '📄 Le relevé des notes de la dernière année est obligatoire pour soumettre un recours',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
+      champsManquants.add("• Relevé des notes de la dernière année (obligatoire)");
+    }
+
+    // 5. Affichage des erreurs si nécessaire
+    if (champsManquants.isNotEmpty) {
+      await _showValidationErrorDialog(champsManquants);
       return;
     }
 
+    // ========== SOUMISSION ==========
     setState(() {
       _isSubmitting = true;
     });
@@ -189,12 +388,17 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
         documentTypes.add('releves_notes');
       }
 
+      // Déterminer le motif final à utiliser
+      final motifFinal = _selectedMotif == "Autre motif" 
+          ? _autreMotifController.text.trim() 
+          : _selectedMotif!;
+
       // Combiner motif et justification comme une lettre officielle
-      final lettreComplete = 'Objet : $_selectedMotif\n\n${_justificationController.text.trim()}';
+      final lettreComplete = 'Objet : $motifFinal\n\n${_justificationController.text.trim()}';
 
       // Appeler l'API de soumission de recours
       final result = await RecoursApiService.submitRecoursWithDocuments(
-        motifRejet: _selectedMotif!,
+        motifRejet: motifFinal,
         justification: lettreComplete,
         documents: filesToUpload,
         documentTypes: documentTypes,
@@ -202,39 +406,42 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
 
       if (mounted) {
         if (result['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Recours soumis avec succès',
-                style: GoogleFonts.poppins(),
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context, true); // Retourner true pour indiquer le succès
+          await _showSuccessDialog();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                result['error'] ?? 'Erreur lors de la soumission du recours',
-                style: GoogleFonts.poppins(),
-              ),
-              backgroundColor: Colors.red,
-            ),
+          String errorMessage = result['error'] ?? 'Une erreur inattendue s\'est produite lors de la soumission du recours.';
+          await _showSubmissionErrorDialog(
+            'Erreur de soumission',
+            errorMessage,
+            icone: Icons.cloud_off_outlined,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Erreur lors de la soumission: $e',
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // Déterminer le type d'erreur pour un message approprié
+        String titre = 'Erreur de connexion';
+        String message;
+        IconData icone = Icons.wifi_off_outlined;
+        
+        if (e.toString().contains('network') || e.toString().contains('connection')) {
+          titre = 'Problème de connexion';
+          message = 'Vérifiez votre connexion internet et réessayez.';
+          icone = Icons.wifi_off_outlined;
+        } else if (e.toString().contains('timeout')) {
+          titre = 'Délai d\'attente dépassé';
+          message = 'Le serveur met trop de temps à répondre. Veuillez réessayer.';
+          icone = Icons.access_time_outlined;
+        } else if (e.toString().contains('server')) {
+          titre = 'Erreur serveur';
+          message = 'Le serveur rencontre un problème temporaire. Veuillez réessayer plus tard.';
+          icone = Icons.dns_outlined;
+        } else {
+          titre = 'Erreur technique';
+          message = 'Une erreur technique s\'est produite.\n\nDétails : $e';
+          icone = Icons.bug_report_outlined;
+        }
+        
+        await _showSubmissionErrorDialog(titre, message, icone: icone);
       }
     } finally {
       if (mounted) {
@@ -451,10 +658,68 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                 onChanged: (value) {
                   setState(() {
                     _selectedMotif = value;
+                    // Vider le champ "Autre motif" si on change de sélection
+                    if (value != "Autre motif") {
+                      _autreMotifController.clear();
+                    }
                   });
                 },
               ),
             ),
+            
+            // ========== CHAMP "AUTRE MOTIF" CONDITIONNEL ==========
+            if (_selectedMotif == "Autre motif") ...[
+              const SizedBox(height: 16),
+              Text(
+                'Précisez votre motif *',
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 14 : 16,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _autreMotifController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  hintText: 'Décrivez votre motif personnalisé...',
+                  hintStyle: GoogleFonts.poppins(
+                    color: isDarkMode ? theme.colorScheme.onSurface.withValues(alpha: 0.6) : Colors.grey[600],
+                    fontSize: isSmallScreen ? 13 : 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDarkMode ? theme.colorScheme.outline : Colors.grey[300]!,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDarkMode ? theme.colorScheme.outline : Colors.grey[300]!,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12, 
+                    vertical: isSmallScreen ? 10 : 12,
+                  ),
+                  filled: true,
+                  fillColor: isDarkMode ? theme.colorScheme.surface : Colors.white,
+                ),
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 14 : 16,
+                  color: isDarkMode ? theme.colorScheme.onSurface : Colors.black87,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -523,15 +788,6 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                   fontSize: isSmallScreen ? 14 : 16,
                   color: isDarkMode ? theme.colorScheme.onSurface : Colors.black87,
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'La justification est obligatoire';
-                  }
-                  if (value.trim().length < 20) {
-                    return 'La justification doit contenir au moins 20 caractères';
-                  }
-                  return null;
-                },
               ),
             ),
           ],
