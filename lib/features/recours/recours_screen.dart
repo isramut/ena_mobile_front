@@ -827,6 +827,16 @@ class _RecoursScreenState extends State<RecoursScreen> {
             ),
           ),
         ],
+        
+        // Espacement adaptatif pour éviter que le contenu soit masqué par la barre de navigation
+        // Plus de padding pour les téléphones avec navigation par touches
+        Builder(
+          builder: (context) {
+            final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+            final additionalPadding = bottomSafeArea < 20 ? 80 : 40; // Plus de padding si navigation par touches
+            return SizedBox(height: bottomSafeArea + additionalPadding);
+          },
+        ),
       ],
     );
   }
