@@ -31,29 +31,10 @@ class PdfGeneratorService {
     }
   }
   
-  /// Vérifie les permissions de stockage de manière simple
+  /// Vérifie les permissions de stockage (toujours true maintenant car dossier privé)
   Future<bool> _checkStoragePermissions() async {
-    if (Platform.isAndroid) {
-      try {
-        // Essayer d'accéder au dossier Downloads
-        final downloadsDir = Directory('/storage/emulated/0/Download');
-        if (await downloadsDir.exists()) {
-          // Tester l'écriture en créant un fichier temporaire
-          final testFile = File('${downloadsDir.path}/.test_ena_permission');
-          await testFile.writeAsString('test');
-          await testFile.delete();
-          return true;
-        }
-      } catch (e) {
-        // Si erreur d'accès, permissions non accordées
-        return false;
-      }
-    } else if (Platform.isIOS) {
-      // Sur iOS, pas besoin de permissions pour le dossier Documents de l'app
-      return true;
-    }
-    
-    return false;
+    // Plus besoin de vérifier les permissions - dossier privé de l'app toujours accessible
+    return true;
   }
 
   /// Génère et prévisualise le PDF de candidature (ancienne méthode pour compatibilité)
@@ -102,49 +83,42 @@ class PdfGeneratorService {
     return pdf;
   }
 
-  /// Sauvegarde le PDF dans le dossier Downloads/Documents de l'utilisateur
+  /// Sauvegarde le PDF dans le dossier privé de l'app et propose le partage
   Future<String> _savePdfToDownloads(pw.Document pdf, CandidaturePdfData data) async {
     try {
       final bytes = await pdf.save();
       
-      // Obtenir le dossier approprié selon la plateforme
-      Directory? targetDir;
+      // Sauvegarder dans le dossier privé de l'application
+      final appDir = await getApplicationDocumentsDirectory();
       
-      if (Platform.isAndroid) {
-        // Sur Android, utiliser le dossier Downloads
-        targetDir = Directory('/storage/emulated/0/Download');
-        
-        // Si le dossier Downloads n'est pas accessible, utiliser le dossier externe
-        if (!await targetDir.exists()) {
-          final externalDir = await getExternalStorageDirectory();
-          if (externalDir != null) {
-            targetDir = Directory('${externalDir.path}/Downloads');
-            await targetDir.create(recursive: true);
-          } else {
-            throw Exception('Impossible d\'accéder au stockage externe');
-          }
-                }
-      } else if (Platform.isIOS) {
-        // Sur iOS, utiliser le dossier Documents de l'application
-        targetDir = await getApplicationDocumentsDirectory();
-      } else {
-        // Pour les autres plateformes
-        targetDir = await getApplicationDocumentsDirectory();
-      }
-      
-      if (!await targetDir.exists()) {
-        throw Exception('Impossible d\'accéder au dossier de téléchargement');
+      if (!await appDir.exists()) {
+        await appDir.create(recursive: true);
       }
       
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'Candidature_ENA_${data.nom}_${data.postnom}_$timestamp.pdf';
-      final file = File('${targetDir.path}/$fileName');
+      final file = File('${appDir.path}/$fileName');
       
       await file.writeAsBytes(bytes);
+      
+      // Proposer le partage automatiquement
+      await _offerPdfOptions(file);
       
       return file.path;
     } catch (e) {
       throw Exception('Erreur lors de la sauvegarde: $e');
+    }
+  }
+
+  /// Propose les options de partage/sauvegarde du PDF à l'utilisateur
+  Future<void> _offerPdfOptions(File pdfFile) async {
+    try {
+      // Partager automatiquement le PDF via le menu de partage Android/iOS
+      await Share.shareXFiles([XFile(pdfFile.path)], 
+        text: 'Voici votre PDF de candidature ENA');
+    } catch (e) {
+      // En cas d'erreur de partage, le fichier reste disponible dans l'app
+      // Note: En production, utiliser un système de logging approprié
     }
   }
 }

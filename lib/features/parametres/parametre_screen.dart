@@ -121,8 +121,19 @@ class _ParametreScreenState extends State<ParametreScreen> {
 
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-        return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        return Builder(
+          builder: (context) {
+            final mediaQuery = MediaQuery.of(context);
+            final bottomSafeArea = mediaQuery.padding.bottom;
+            final hasNavigationBar = bottomSafeArea > 0;
+            
+            return ListView(
+              padding: EdgeInsets.only(
+                left: 14,
+                right: 14,
+                top: 12,
+                bottom: hasNavigationBar ? bottomSafeArea + 12 : 12,
+              ),
           children: [
             // Bandeau titre
             Card(
@@ -456,6 +467,8 @@ class _ParametreScreenState extends State<ParametreScreen> {
             ),
             const SizedBox(height: 80), // Laisse la place pour le footer
           ],
+            );
+          },
         );
       },
     );

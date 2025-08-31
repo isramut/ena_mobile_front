@@ -8,14 +8,6 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     
     <!-- ===================== PERMISSIONS STOCKAGE ===================== -->
-    <!-- Permission pour lire le stockage externe (documents, images) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <!-- Permission pour écrire sur le stockage externe -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    
-    <!-- Pour Android 11+ (API 30+) - Accès complet au stockage -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-    
     <!-- Pour Android 13+ (API 33+) - Permissions granulaires pour les médias -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />

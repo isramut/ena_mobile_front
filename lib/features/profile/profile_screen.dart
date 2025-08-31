@@ -339,8 +339,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      body: Builder(
+        builder: (context) {
+          final mediaQuery = MediaQuery.of(context);
+          final bottomSafeArea = mediaQuery.padding.bottom;
+          final hasNavigationBar = bottomSafeArea > 0;
+          
+          return ListView(
+            padding: EdgeInsets.only(
+              left: 14,
+              right: 14,
+              top: 12,
+              bottom: hasNavigationBar ? bottomSafeArea + 12 : 12,
+            ),
         children: [
           Card(
             color: theme.cardColor,
@@ -764,6 +775,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+          );
+        },
       ),
     );
   }

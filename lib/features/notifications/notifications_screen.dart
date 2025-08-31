@@ -301,12 +301,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadNotifications,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _notifications.length,
-        itemBuilder: (context, index) {
-          final notification = _notifications[index];
-          return _buildNotificationCard(notification);
+      child: Builder(
+        builder: (context) {
+          final mediaQuery = MediaQuery.of(context);
+          final bottomPadding = mediaQuery.padding.bottom;
+          
+          // Pour les notifications, on ajoute toujours un padding supplémentaire
+          // car la barre de navigation peut être translucide
+          final extraBottomPadding = bottomPadding > 0 ? bottomPadding : 16;
+          
+          return ListView.builder(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: extraBottomPadding + 16, // Padding supplémentaire pour la navigation
+            ),
+            itemCount: _notifications.length,
+            itemBuilder: (context, index) {
+              final notification = _notifications[index];
+              return _buildNotificationCard(notification);
+            },
+          );
         },
       ),
     );
