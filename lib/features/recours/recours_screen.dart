@@ -35,6 +35,20 @@ class _RecoursScreenState extends State<RecoursScreen> {
   HasSubmittedRecours? hasSubmittedRecours;
   List<Recours>? mesRecours;
 
+  /// Map pour convertir les noms techniques en libellés utilisateur
+  static const Map<String, String> _documentDisplayNames = {
+    'piece_identite': 'Pièce d\'identité',
+    'aptitude_physique': 'Certificat d\'aptitude physique',
+    'lettre_de_motivation': 'Lettre de motivation',
+    'titre_academique': 'Diplôme académique',
+    'cv': 'CV',
+  };
+
+  /// Convertit un nom technique de document en libellé utilisateur
+  String _getDisplayName(String technicalName) {
+    return _documentDisplayNames[technicalName] ?? technicalName;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -127,7 +141,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
           
           if (!documentsMap.containsKey(document)) {
             documentsMap[document] = DocumentInfo(
-              nom: document,
+              nom: _getDisplayName(document),
               raisons: [],
               url: _getDocumentUrl(document),
             );
@@ -138,7 +152,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
           final document = splitPart[0].trim();
           if (!documentsMap.containsKey(document)) {
             documentsMap[document] = DocumentInfo(
-              nom: document,
+              nom: _getDisplayName(document),
               raisons: [],
               url: _getDocumentUrl(document),
             );
@@ -677,7 +691,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              doc,
+                              _getDisplayName(doc),
                               style: GoogleFonts.poppins(
                                 fontSize: isSmallScreen ? 13 : 14,
                                 color: theme.colorScheme.onSurface,
@@ -687,6 +701,35 @@ class _RecoursScreenState extends State<RecoursScreen> {
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                  // Ajouter manuellement le relevé de notes
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 6),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.error,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Relevé de notes de la dernière année',
+                            style: GoogleFonts.poppins(
+                              fontSize: isSmallScreen ? 13 : 14,
+                              color: theme.colorScheme.onSurface,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

@@ -43,8 +43,9 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
     'cv': 'CV',
     'lettre_motivation': 'Lettre de motivation',
     'piece_identite': 'Pièce d\'identité',
-    'aptitude_physique': 'Aptitude physique',
-    'diplome': 'Diplôme',
+    'aptitude_physique': 'Certificat d\'aptitude physique',
+    'diplome': 'Diplôme académique',
+    'titre_academique': 'Diplôme académique',
     'releves_notes': 'Relevé des notes de la dernière année'
   };
 
