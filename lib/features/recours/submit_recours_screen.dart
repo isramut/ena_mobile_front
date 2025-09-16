@@ -60,10 +60,33 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAutoSavedData(); // Charger d'abord les données sauvegardées
-    _initializeDocuments(); // Puis initialiser seulement ce qui manque
-    _setupTextListeners();
-    _startAutoSave();
+    _initializeAsync();
+  }
+
+  void _initializeAsync() async {
+    final dataRestored = await _loadAutoSavedData();    // Attendre la restauration complète
+    _initializeDocuments();        // Initialiser seulement ce qui manque
+    _setupTextListeners();         // Configurer les listeners
+    _startAutoSave();              // Démarrer l'auto-save
+    
+    if (mounted) {
+      setState(() {});  // Rafraîchir l'UI une seule fois
+      
+      // Afficher la notification si des données ont été restaurées
+      if (dataRestored) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Vos données précédentes ont été restaurées',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
   
   void _setupTextListeners() {
@@ -135,7 +158,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
     }
   }
 
-  void _loadAutoSavedData() async {
+  Future<bool> _loadAutoSavedData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedDataString = prefs.getString(_autoSaveKey);
@@ -151,7 +174,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
           // Supprimer les données si plus vieilles que 7 jours
           if (daysSinceSave > 7) {
             await _clearAutoSavedData();
-            return;
+            return false;
           }
         }
         
@@ -160,15 +183,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
         _justificationController.text = savedData['justificationText'] ?? '';
         _autreMotifController.text = savedData['autreMotifText'] ?? '';
         
-        // Restaurer les états des documents
-        if (savedData['documentsToResubmit'] != null) {
-          final Map<String, dynamic> savedDocuments = savedData['documentsToResubmit'];
-          for (String docType in savedDocuments.keys) {
-            _documentsToResubmit[docType] = savedDocuments[docType] ?? false;
-          }
-        }
-        
-        // Restaurer les fichiers
+        // Restaurer les fichiers D'ABORD (avant les états des cases)
         if (savedData['filePaths'] != null) {
           final Map<String, dynamic> savedFilePaths = savedData['filePaths'];
           for (String docType in savedFilePaths.keys) {
@@ -176,26 +191,23 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
           }
         }
         
-        // Afficher la notification après que le widget soit monté
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Vos données précédentes ont été restaurées',
-                  style: GoogleFonts.poppins(fontSize: 14),
-                ),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 3),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+        // Puis restaurer les états des documents (seulement si pas déjà définis par _restoreFileFromPath)
+        if (savedData['documentsToResubmit'] != null) {
+          final Map<String, dynamic> savedDocuments = savedData['documentsToResubmit'];
+          for (String docType in savedDocuments.keys) {
+            // Ne restaurer l'état que si _restoreFileFromPath n'a pas déjà défini une valeur
+            if (!_documentsToResubmit.containsKey(docType)) {
+              _documentsToResubmit[docType] = savedDocuments[docType] ?? false;
+            }
           }
-        });
+        }
+        
+        return true; // Des données ont été restaurées
       }
     } catch (e) {
       // Ignorer les erreurs de chargement silencieusement
     }
+    return false; // Aucune donnée restaurée
   }
 
   void _restoreFileFromPath(String? path, String docType) {
@@ -203,6 +215,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
       final file = File(path);
       if (file.existsSync()) {
         _selectedFiles[docType] = file;
+        _documentsToResubmit[docType] = true;  // Cocher la case quand le fichier est restauré
       } else {
         // Si le fichier n'existe plus, décocher la case automatiquement
         _documentsToResubmit[docType] = false;
