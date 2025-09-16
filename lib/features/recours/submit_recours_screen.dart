@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:ena_mobile_front/models/ma_candidature.dart';
 import 'package:ena_mobile_front/services/recours_api_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SubmitRecoursScreen extends StatefulWidget {
   final MaCandidature candidature;
@@ -25,6 +28,11 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
   // Variables pour le formulaire
   String? _selectedMotif;
   bool _isSubmitting = false;
+  
+  // Auto-sauvegarde
+  Timer? _autoSaveTimer;
+  static const String _autoSaveKey = 'recours_form_autosave';
+  static const Duration _autoSaveInterval = Duration(minutes: 1);
   
   // Map pour stocker les fichiers sélectionnés par document
   final Map<String, File?> _selectedFiles = {};
@@ -52,26 +60,164 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeDocuments();
+    _loadAutoSavedData(); // Charger d'abord les données sauvegardées
+    _initializeDocuments(); // Puis initialiser seulement ce qui manque
+    _setupTextListeners();
+    _startAutoSave();
+  }
+  
+  void _setupTextListeners() {
+    _justificationController.addListener(_saveFormData);
+    _autreMotifController.addListener(_saveFormData);
   }
 
   void _initializeDocuments() {
-    // Initialiser les maps pour chaque document non conforme
+    // Initialiser les maps pour chaque document non conforme SEULEMENT s'ils n'existent pas déjà
     for (String doc in widget.candidature.documentsNonConformes) {
-      _documentsToResubmit[doc] = false;
-      _selectedFiles[doc] = null;
+      if (!_documentsToResubmit.containsKey(doc)) {
+        _documentsToResubmit[doc] = false;
+      }
+      if (!_selectedFiles.containsKey(doc)) {
+        _selectedFiles[doc] = null;
+      }
     }
     
-    // Initialiser le relevé des notes (affiché statiquement)
-    _documentsToResubmit['releves_notes'] = false;
-    _selectedFiles['releves_notes'] = null;
+    // Initialiser le relevé des notes (affiché statiquement) SEULEMENT s'il n'existe pas déjà
+    if (!_documentsToResubmit.containsKey('releves_notes')) {
+      _documentsToResubmit['releves_notes'] = false;
+    }
+    if (!_selectedFiles.containsKey('releves_notes')) {
+      _selectedFiles['releves_notes'] = null;
+    }
   }
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
+    _saveFormData();
+    _justificationController.removeListener(_saveFormData);
+    _autreMotifController.removeListener(_saveFormData);
     _justificationController.dispose();
     _autreMotifController.dispose();
     super.dispose();
+  }
+
+  // ===================== AUTO-SAUVEGARDE =====================
+
+  void _startAutoSave() {
+    _autoSaveTimer = Timer.periodic(_autoSaveInterval, (timer) {
+      _saveFormData();
+    });
+  }
+
+  void _saveFormData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Préparer les chemins des fichiers
+      Map<String, String?> filePathsMap = {};
+      for (String docType in _selectedFiles.keys) {
+        filePathsMap[docType] = _selectedFiles[docType]?.path;
+      }
+      
+      Map<String, dynamic> formData = {
+        'selectedMotif': _selectedMotif,
+        'justificationText': _justificationController.text,
+        'autreMotifText': _autreMotifController.text,
+        'documentsToResubmit': _documentsToResubmit,
+        'filePaths': filePathsMap,
+        'saveTimestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      
+      await prefs.setString(_autoSaveKey, jsonEncode(formData));
+    } catch (e) {
+      // Ignorer les erreurs de sauvegarde silencieusement
+    }
+  }
+
+  void _loadAutoSavedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedDataString = prefs.getString(_autoSaveKey);
+      
+      if (savedDataString != null) {
+        final Map<String, dynamic> savedData = jsonDecode(savedDataString);
+        
+        final saveTimestamp = savedData['saveTimestamp'] as int?;
+        if (saveTimestamp != null) {
+          final saveDate = DateTime.fromMillisecondsSinceEpoch(saveTimestamp);
+          final daysSinceSave = DateTime.now().difference(saveDate).inDays;
+          
+          // Supprimer les données si plus vieilles que 7 jours
+          if (daysSinceSave > 7) {
+            await _clearAutoSavedData();
+            return;
+          }
+        }
+        
+        // Restaurer les données SANS setState si on est dans initState
+        _selectedMotif = savedData['selectedMotif'];
+        _justificationController.text = savedData['justificationText'] ?? '';
+        _autreMotifController.text = savedData['autreMotifText'] ?? '';
+        
+        // Restaurer les états des documents
+        if (savedData['documentsToResubmit'] != null) {
+          final Map<String, dynamic> savedDocuments = savedData['documentsToResubmit'];
+          for (String docType in savedDocuments.keys) {
+            _documentsToResubmit[docType] = savedDocuments[docType] ?? false;
+          }
+        }
+        
+        // Restaurer les fichiers
+        if (savedData['filePaths'] != null) {
+          final Map<String, dynamic> savedFilePaths = savedData['filePaths'];
+          for (String docType in savedFilePaths.keys) {
+            _restoreFileFromPath(savedFilePaths[docType], docType);
+          }
+        }
+        
+        // Afficher la notification après que le widget soit monté
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Vos données précédentes ont été restaurées',
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      // Ignorer les erreurs de chargement silencieusement
+    }
+  }
+
+  void _restoreFileFromPath(String? path, String docType) {
+    if (path != null && path.isNotEmpty) {
+      final file = File(path);
+      if (file.existsSync()) {
+        _selectedFiles[docType] = file;
+      } else {
+        // Si le fichier n'existe plus, décocher la case automatiquement
+        _documentsToResubmit[docType] = false;
+        _selectedFiles[docType] = null;
+      }
+    }
+  }
+
+  Future<void> _clearAutoSavedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_autoSaveKey);
+    } catch (e) {
+      // Ignorer les erreurs silencieusement
+    }
   }
 
   Future<void> _pickFile(String documentType) async {
@@ -108,6 +254,9 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
           _selectedFiles[documentType] = file;
           _documentsToResubmit[documentType] = true;
         });
+        
+        // Sauvegarder automatiquement après modification
+        _saveFormData();
       }
     } catch (e) {
       if (mounted) {
@@ -407,6 +556,8 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
 
       if (mounted) {
         if (result['success'] == true) {
+          // Supprimer les données sauvegardées après succès
+          await _clearAutoSavedData();
           await _showSuccessDialog();
         } else {
           String errorMessage = result['error'] ?? 'Une erreur inattendue s\'est produite lors de la soumission du recours.';
@@ -664,6 +815,8 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                       _autreMotifController.clear();
                     }
                   });
+                  // Sauvegarder automatiquement après modification
+                  _saveFormData();
                 },
               ),
             ),
@@ -883,6 +1036,8 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
                       _selectedFiles[docType] = null;
                     }
                   });
+                  // Sauvegarder automatiquement après modification
+                  _saveFormData();
                 },
                 activeColor: theme.colorScheme.primary,
               ),
@@ -980,9 +1135,7 @@ class _SubmitRecoursScreenState extends State<SubmitRecoursScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: isDarkMode 
-            ? theme.colorScheme.outline 
-            : Colors.grey[400],
+          disabledBackgroundColor: theme.colorScheme.primary.withValues(alpha: 0.6),
           padding: EdgeInsets.symmetric(
             vertical: isSmallScreen ? 16 : 18,
             horizontal: isSmallScreen ? 20 : 24,
