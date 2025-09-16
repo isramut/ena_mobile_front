@@ -2,7 +2,7 @@ name: ena_mobile_front
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.1+4
+version: 1.0.1+5
 
 environment:
   sdk: ^3.8.1
@@ -68,6 +68,9 @@ flutter_launcher_icons:
   # Icône adaptative pour Android (s'adapte aux couleurs système)
   adaptive_icon_background: "#3678FF"  # Bleu ENA qui s'adaptera aux palettes
   adaptive_icon_foreground: "assets/icon/MyENA.png"  # Votre logo
+  
+  # Icône auto-thématique pour Android 12+ (Material You)
+  adaptive_icon_monochrome: "assets/icon/MyENA_monochrome.png"  # Logo blanc pour auto-theming
   
   # Icône standard pour iOS et fallback Android
   image_path: "assets/icon/MyENA.png"
