@@ -641,8 +641,97 @@ class _RecoursScreenState extends State<RecoursScreen> {
         
         const SizedBox(height: 16),
         
-        // Card avec les documents non conformes
-        if (candidatureRecours.documentsNonConformes.isNotEmpty) ...[
+        // Affichage conditionnel selon le statut du recours
+        if (recours.statut.toLowerCase() == 'valide') ...[
+          // Card positive pour recours accepté
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            color: Colors.green.withAlpha(15),
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green.shade700,
+                        size: isSmallScreen ? 22 : 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Recours accepté',
+                          style: GoogleFonts.poppins(
+                            fontSize: isSmallScreen ? 16 : 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '🎉 Félicitations ! Après examen de votre recours, celui-ci a été accepté.',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Vous êtes maintenant éligible à la suite du processus de recrutement. Les équipes concernées vous contacteront prochainement pour les prochaines étapes.',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 13 : 14,
+                      color: theme.colorScheme.onSurface.withAlpha(180),
+                      height: 1.4,
+                    ),
+                  ),
+                  if (recours.dateModification != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withAlpha(25),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.green.withAlpha(50),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.schedule,
+                            size: 16,
+                            color: Colors.green.shade700,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Accepté le ${recours.dateModification!.day}/${recours.dateModification!.month}/${recours.dateModification!.year}',
+                            style: GoogleFonts.poppins(
+                              fontSize: isSmallScreen ? 12 : 13,
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ] else ...[
+          // Affichage normal pour recours rejetés ou en attente
+          
+          // Card avec les documents non conformes
+          if (candidatureRecours.documentsNonConformes.isNotEmpty) ...[
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -791,6 +880,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
             ),
           ),
         ),
+        ],
         
         // Si le recours est traité, afficher les détails
         if (recours.traite) ...[
@@ -798,7 +888,9 @@ class _RecoursScreenState extends State<RecoursScreen> {
           Card(
             elevation: 4,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            color: Colors.green.shade50,
+            color: theme.brightness == Brightness.dark 
+                ? (recours.statut == 'rejete' ? Colors.red.withAlpha(30) : Colors.green.withAlpha(30))
+                : (recours.statut == 'rejete' ? Colors.red.shade50 : Colors.green.shade50),
             child: Padding(
               padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
               child: Column(
@@ -807,8 +899,8 @@ class _RecoursScreenState extends State<RecoursScreen> {
                   Row(
                     children: [
                       Icon(
-                        Icons.check_circle,
-                        color: Colors.green.shade700,
+                        recours.statut == 'rejete' ? Icons.cancel : Icons.check_circle,
+                        color: recours.statut == 'rejete' ? Colors.red.shade700 : Colors.green.shade700,
                         size: isSmallScreen ? 22 : 24,
                       ),
                       const SizedBox(width: 12),
@@ -818,7 +910,7 @@ class _RecoursScreenState extends State<RecoursScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: isSmallScreen ? 16 : 18,
                             fontWeight: FontWeight.w600,
-                            color: Colors.green.shade800,
+                            color: recours.statut == 'rejete' ? Colors.red.shade800 : Colors.green.shade800,
                           ),
                         ),
                       ),
@@ -835,36 +927,23 @@ class _RecoursScreenState extends State<RecoursScreen> {
                       isSmallScreen,
                     ),
                   
-                  if (recours.commentaireAdmin != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Commentaire de l\'administration :',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 13 : 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green.shade800,
-                      ),
+                  // Section Décision
+                  const SizedBox(height: 12),
+                  _buildDecisionRow(
+                    recours.statut == 'rejete' ? Icons.cancel : Icons.check_circle,
+                    'Décision',
+                    recours.statut == 'rejete' ? 'Rejeté' : 'Accepté',
+                    recours.statut == 'rejete',
+                    theme,
+                    isSmallScreen,
+                  ),
+                  
+                  if (recours.commentaireAdmin != null) 
+                    _buildParsedComment(
+                      recours.commentaireAdmin!,
+                      recours.statut == 'rejete',
+                      isSmallScreen,
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.green.shade300,
-                        ),
-                      ),
-                      child: Text(
-                        recours.commentaireAdmin!,
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 13 : 14,
-                          color: Colors.green.shade800,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -1191,6 +1270,220 @@ class _RecoursScreenState extends State<RecoursScreen> {
     );
   }
 
+  /// Ligne de décision avec couleur selon le statut
+  Widget _buildDecisionRow(
+    IconData icon,
+    String label,
+    String value,
+    bool isRejected,
+    ThemeData theme,
+    bool isSmallScreen,
+  ) {
+    final Color iconColor = isRejected ? Colors.red[700]! : Colors.green[700]!;
+    final Color backgroundColor = isRejected ? Colors.red[50]! : Colors.green[50]!;
+    final Color borderColor = isRejected ? Colors.red[200]! : Colors.green[200]!;
+    final Color textColor = isRejected ? Colors.red[800]! : Colors.green[800]!;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: iconColor,
+            size: isSmallScreen ? 18 : 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: isSmallScreen ? 13 : 14,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface.withAlpha(180),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: borderColor),
+              ),
+              child: Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 13 : 14,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Parse le commentaire administratif pour regrouper par document
+  Map<String, List<String>> _parseCommentaireAdmin(String commentaire) {
+    final Map<String, List<String>> groupedComments = {};
+    
+    // Dictionnaire pour traduire les noms techniques
+    final Map<String, String> documentTranslation = {
+      'Curriculum Vitae': 'CV',
+      'Lettre de motivation': 'Lettre de motivation',
+      'Diplome': 'Diplôme',
+      'Certificat': 'Certificat',
+      'Attestation': 'Attestation',
+      'Piece d\'identite': 'Pièce d\'identité',
+      'Photo': 'Photo',
+      'Justificatif': 'Justificatif',
+    };
+    
+    // Séparer les sections par point-virgule
+    final sections = commentaire.split(';');
+    
+    for (final section in sections) {
+      final trimmedSection = section.trim();
+      if (trimmedSection.isEmpty) continue;
+      
+      // Chercher le pattern [Document]: raison
+      final regex = RegExp(r'\[([^\]]+)\]:\s*(.+)');
+      final match = regex.firstMatch(trimmedSection);
+      
+      if (match != null) {
+        final document = match.group(1)?.trim() ?? '';
+        final raison = match.group(2)?.trim() ?? '';
+        
+        // Traduire le nom du document
+        final translatedDoc = documentTranslation[document] ?? document;
+        
+        // Ajouter à la liste des raisons pour ce document
+        if (!groupedComments.containsKey(translatedDoc)) {
+          groupedComments[translatedDoc] = [];
+        }
+        if (raison.isNotEmpty) {
+          groupedComments[translatedDoc]!.add(raison);
+        }
+      }
+    }
+    
+    return groupedComments;
+  }
+
+  /// Construit le widget pour afficher le commentaire parsé
+  Widget _buildParsedComment(String commentaire, bool isRejected, bool isSmallScreen) {
+    final theme = Theme.of(context);
+    final parsedComments = _parseCommentaireAdmin(commentaire);
+    
+    if (parsedComments.isEmpty) {
+      return Container();
+    }
+    
+    final Color titleColor = isRejected ? Colors.red[700]! : Colors.green[700]!;
+    final Color backgroundColor = isRejected 
+        ? (theme.brightness == Brightness.dark ? Colors.red[900]!.withAlpha(30) : Colors.red[50]!)
+        : (theme.brightness == Brightness.dark ? Colors.green[900]!.withAlpha(30) : Colors.green[50]!);
+    final Color borderColor = isRejected ? Colors.red[200]! : Colors.green[200]!;
+    
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Commentaire de l\'administration :',
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 13 : 14,
+              fontWeight: FontWeight.w600,
+              color: titleColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: borderColor.withAlpha(100)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final entry in parsedComments.entries) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '• ',
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 13 : 14,
+                          fontWeight: FontWeight.w600,
+                          color: titleColor,
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${entry.key} :',
+                              style: GoogleFonts.poppins(
+                                fontSize: isSmallScreen ? 13 : 14,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            for (final raison in entry.value)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 12, bottom: 4),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '- ',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isSmallScreen ? 12 : 13,
+                                        color: theme.colorScheme.onSurface.withAlpha(180),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        raison,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isSmallScreen ? 12 : 13,
+                                          color: theme.colorScheme.onSurface.withAlpha(200),
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (entry != parsedComments.entries.last)
+                    const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Ligne d'information standard
   Widget _buildInfoRow(
     IconData icon,
@@ -1395,12 +1688,24 @@ class _RecoursScreenState extends State<RecoursScreen> {
     Color statusColor;
     Color statusBgColor;
     
-    if (recours.traite) {
-      statusColor = Colors.green.shade700;
-      statusBgColor = Colors.green.shade100;
-    } else {
-      statusColor = Colors.orange.shade700;
-      statusBgColor = Colors.orange.shade100;
+    // Distinction visuelle basée sur le statut exact de l'API
+    switch (recours.statut.toLowerCase()) {
+      case 'valide':
+        // Recours accepté - Vert
+        statusColor = Colors.green.shade700;
+        statusBgColor = Colors.green.shade100;
+        break;
+      case 'rejete':
+        // Recours rejeté - Rouge
+        statusColor = Colors.red.shade700;
+        statusBgColor = Colors.red.shade100;
+        break;
+      case 'en_attente':
+      default:
+        // En attente de traitement - Orange
+        statusColor = Colors.orange.shade700;
+        statusBgColor = Colors.orange.shade100;
+        break;
     }
 
     return Padding(

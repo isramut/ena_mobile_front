@@ -46,6 +46,7 @@ class CandidatInfo {
   final String email;
   final String firstName;
   final String lastName;
+  final String? middleName;
   final String? telephone;
 
   CandidatInfo({
@@ -53,6 +54,7 @@ class CandidatInfo {
     required this.email,
     required this.firstName,
     required this.lastName,
+    this.middleName,
     this.telephone,
   });
 
@@ -62,6 +64,7 @@ class CandidatInfo {
       email: json['email'] ?? '',
       firstName: json['first_name'] ?? '',
       lastName: json['last_name'] ?? '',
+      middleName: json['middle_name'],
       telephone: json['telephone'],
     );
   }
@@ -75,6 +78,13 @@ class CandidatureRecours {
   final String statut;
   final String? commentaireAdmin;
   final List<String> documentsNonConformes;
+  final DateTime? dateCreation;
+  final String? aptitudePhysique;
+  final String? cv;
+  final String? diplome;
+  final String? lettreMotivation;
+  final String? pieceIdentite;
+  final String? relevesNotes;
 
   CandidatureRecours({
     required this.id,
@@ -83,6 +93,13 @@ class CandidatureRecours {
     required this.statut,
     this.commentaireAdmin,
     this.documentsNonConformes = const [],
+    this.dateCreation,
+    this.aptitudePhysique,
+    this.cv,
+    this.diplome,
+    this.lettreMotivation,
+    this.pieceIdentite,
+    this.relevesNotes,
   });
 
   factory CandidatureRecours.fromJson(Map<String, dynamic> json) {
@@ -95,6 +112,15 @@ class CandidatureRecours {
       documentsNonConformes: json['documents_non_conformes'] != null 
           ? List<String>.from(json['documents_non_conformes'])
           : [],
+      dateCreation: json['date_creation'] != null 
+          ? DateTime.tryParse(json['date_creation']) 
+          : null,
+      aptitudePhysique: json['aptitude_physique'],
+      cv: json['cv'],
+      diplome: json['diplome'],
+      lettreMotivation: json['lettre_motivation'],
+      pieceIdentite: json['piece_identite'],
+      relevesNotes: json['releves_notes'],
     );
   }
 }
@@ -119,65 +145,118 @@ class TraitePar {
 
 class Recours {
   final String id;
-  final String ordre;
+  final String numero;
+  final String titre;
   final dynamic candidature; // String ou CandidatureRecours
-  final String motifRejet;
+  final String? motifRejet;
   final String justification;
-  final String? documentJustificatif;
   final DateTime dateSoumission;
-  final bool traite;
-  final DateTime? dateTraitement;
+  final String statut;
+  final DateTime? dateModification;
   final String? commentaireAdmin;
   final TraitePar? traitePar;
+  final String? aptitudePhysique;
+  final String? cv;
+  final String? diplome;
+  final String? lettreMotivation;
+  final String? pieceIdentite;
+  final String? relevesNotes;
+  final List<String> documentsInvalides;
 
   Recours({
     required this.id,
-    required this.ordre,
+    required this.numero,
+    required this.titre,
     required this.candidature,
-    required this.motifRejet,
+    this.motifRejet,
     required this.justification,
-    this.documentJustificatif,
     required this.dateSoumission,
-    required this.traite,
-    this.dateTraitement,
+    required this.statut,
+    this.dateModification,
     this.commentaireAdmin,
     this.traitePar,
+    this.aptitudePhysique,
+    this.cv,
+    this.diplome,
+    this.lettreMotivation,
+    this.pieceIdentite,
+    this.relevesNotes,
+    this.documentsInvalides = const [],
   });
 
   factory Recours.fromJson(Map<String, dynamic> json) {
-    return Recours(
-      id: json['id'].toString(),
-      ordre: json['ordre'] ?? '',
-      candidature: json['candidature'] is String 
-          ? json['candidature']
-          : CandidatureRecours.fromJson(json['candidature']),
-      motifRejet: json['motif_rejet'] ?? '',
-      justification: json['justification'] ?? '',
-      documentJustificatif: json['document_justificatif'],
-      dateSoumission: DateTime.parse(json['date_soumission']),
-      traite: json['traite'] ?? false,
-      dateTraitement: json['date_traitement'] != null 
-          ? DateTime.parse(json['date_traitement'])
-          : null,
-      commentaireAdmin: json['commentaire_admin'],
-      traitePar: json['traite_par'] != null 
-          ? TraitePar.fromJson(json['traite_par'])
-          : null,
-    );
+    try {
+      return Recours(
+        id: json['id'].toString(),
+        numero: json['numero'] ?? '',
+        titre: json['titre'] ?? 'Recours sans titre',
+        candidature: json['candidature'] is String 
+            ? json['candidature']
+            : (json['candidature'] != null 
+                ? CandidatureRecours.fromJson(json['candidature'])
+                : 'Candidature non spécifiée'),
+        motifRejet: json['motif_rejet'],
+        justification: json['justification'] ?? '',
+        dateSoumission: json['date_soumission'] != null
+            ? DateTime.parse(json['date_soumission'])
+            : DateTime.now(),
+        statut: json['statut'] ?? 'en_attente',
+        dateModification: json['date_modification'] != null 
+            ? DateTime.parse(json['date_modification'])
+            : null,
+        commentaireAdmin: json['commentaire_admin'],
+        traitePar: json['traite_par'] != null 
+            ? TraitePar.fromJson(json['traite_par'])
+            : null,
+        aptitudePhysique: json['aptitude_physique'],
+        cv: json['cv'],
+        diplome: json['diplome'],
+        lettreMotivation: json['lettre_motivation'],
+        pieceIdentite: json['piece_identite'],
+        relevesNotes: json['releves_notes'],
+        documentsInvalides: json['documents_invalides'] != null
+            ? List<String>.from(json['documents_invalides'])
+            : [],
+      );
+    } catch (e) {
+      print('⚠️ Erreur parsing Recours: $e');
+      // Fallback avec des valeurs par défaut
+      return Recours(
+        id: json['id']?.toString() ?? 'unknown',
+        numero: json['numero'] ?? json['ordre'] ?? 'N/A',
+        titre: json['titre'] ?? 'Recours',
+        candidature: 'Erreur de parsing',
+        motifRejet: json['motif_rejet'],
+        justification: json['justification'] ?? '',
+        dateSoumission: DateTime.now(),
+        statut: json['statut'] ?? (json['traite'] == true ? 'traite' : 'en_attente'),
+        dateModification: null,
+        commentaireAdmin: json['commentaire_admin'],
+        traitePar: null,
+      );
+    }
   }
 
   // Getters utiles pour l'affichage
   String get statutFormate {
-    if (traite) {
-      return commentaireAdmin != null ? 'Traité' : 'Traité';
+    switch (statut.toLowerCase()) {
+      case 'valide':
+        return 'Validé';
+      case 'rejete':
+        return 'Rejeté';
+      case 'en_attente':
+        return 'En attente de traitement';
+      case 'traite':
+        return 'Traité';
+      default:
+        return 'En attente de traitement';
     }
-    return 'En attente de traitement';
   }
 
-  // Getter pour la compatibilité avec l'ancien code
-  String get statut {
-    return traite ? 'traite' : 'en_attente';
-  }
+  // Getters pour compatibilité avec l'ancien code
+  String get ordre => numero;
+  bool get traite => statut == 'valide' || statut == 'rejete' || statut == 'traite';
+  DateTime? get dateTraitement => dateModification;
 
   String get dateSoumissionFormatee {
     return '${dateSoumission.day}/${dateSoumission.month}/${dateSoumission.year}';
@@ -438,7 +517,7 @@ class HasSubmittedRecours {
   final DateTime? dateSoumissionRecours;
   final String? motifRejet;
   final bool? traite;
-  final DateTime? dateTraitement;
+  final DateTime? dateModification;
 
   HasSubmittedRecours({
     required this.hasRecours,
@@ -448,7 +527,7 @@ class HasSubmittedRecours {
     this.dateSoumissionRecours,
     this.motifRejet,
     this.traite,
-    this.dateTraitement,
+    this.dateModification,
   });
 
   factory HasSubmittedRecours.fromJson(Map<String, dynamic> json) {
@@ -462,8 +541,8 @@ class HasSubmittedRecours {
           : null,
       motifRejet: json['motif_rejet'],
       traite: json['traite'],
-      dateTraitement: json['date_traitement'] != null 
-          ? DateTime.parse(json['date_traitement'])
+      dateModification: json['date_modification'] != null 
+          ? DateTime.parse(json['date_modification'])
           : null,
     );
   }
@@ -474,8 +553,13 @@ class HasSubmittedRecours {
     return '${dateSoumissionRecours!.day}/${dateSoumissionRecours!.month}/${dateSoumissionRecours!.year}';
   }
 
+  String? get dateModificationFormatee {
+    if (dateModification == null) return null;
+    return '${dateModification!.day}/${dateModification!.month}/${dateModification!.year}';
+  }
+
+  // Getter pour compatibilité avec l'ancien code
   String? get dateTraitementFormatee {
-    if (dateTraitement == null) return null;
-    return '${dateTraitement!.day}/${dateTraitement!.month}/${dateTraitement!.year}';
+    return dateModificationFormatee;
   }
 }
