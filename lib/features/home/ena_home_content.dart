@@ -339,6 +339,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
 
   // Méthodes utilitaires pour la gestion dynamique de la candidature selon les spécifications métier
   double _getProgressValue() {
+    // Si recours traité : progressbar = 100%
+    if (_recoursInfo?.traite == true) {
+      return 1.0;
+    }
+    
     // Si has_applied = false : progressbar = 0%
     if (!_hasApplied) {
       return 0.0;
@@ -373,7 +378,21 @@ class _AccueilScreenState extends State<AccueilScreen> {
     return '${(progress * 100).toInt()}%';
   }
 
+  Color _getProgressTextColor() {
+    // Si recours traité, afficher le texte en gris
+    if (_recoursInfo?.traite == true) {
+      return Colors.grey;
+    }
+    // Sinon, garder la couleur blanche par défaut
+    return Colors.white;
+  }
+
   Color _getProgressColor() {
+    // Si recours traité : couleur grise
+    if (_recoursInfo?.traite == true) {
+      return Colors.grey;
+    }
+    
     // Si has_applied = false ou pas de candidature
     if (!_hasApplied || _candidatureInfo == null) return Colors.white;
     
@@ -992,7 +1011,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 Text(
                   progressText,
                   style: GoogleFonts.poppins(
-                    color: Colors.white,
+                    color: _getProgressTextColor(),
                     fontWeight: FontWeight.bold,
                     fontSize: isVeryNarrowScreen ? 12 : 14,
                   ),
@@ -1128,6 +1147,76 @@ class _AccueilScreenState extends State<AccueilScreen> {
                 isVeryNarrowScreen: isVeryNarrowScreen,
               ),
             ],
+            
+            // Bouton "Voir décision" quand le recours est traité
+            if (_recoursInfo?.traite == true) ...[
+              SizedBox(height: isNarrowScreen ? 6 : 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  onPressed: _navigateToRecours,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3678FF), // Même bleu que le premier card
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isVeryNarrowScreen ? 12 : 16,
+                      vertical: isVeryNarrowScreen ? 6 : 8,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: Text(
+                    "Voir décision",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: isVeryNarrowScreen ? 11 : 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
+            
+            // Séparateur simple et élégant
+            Container(
+              margin: EdgeInsets.symmetric(
+                vertical: isVeryNarrowScreen ? 16 : 20,
+                horizontal: isVeryNarrowScreen ? 20 : 30,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.more_horiz,
+                      color: Colors.white.withValues(alpha: 0.5),
+                      size: 14,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
             _buildStepRow(
               color: Colors.white.withValues(alpha: 0.45),
               icon: Icons.radio_button_unchecked,
