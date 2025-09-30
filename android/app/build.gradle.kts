@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.example.ena_mobile_front"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36 // Mis à jour pour compatibilité image_cropper
     //ndkVersion = flutter.ndkVersion
     ndkVersion = "27.0.12077973"
 
@@ -36,7 +36,7 @@ android {
         applicationId = "cd.ena.mobile"
         // Configuration optimisée pour Android mobile
         minSdk = 21 // Android 5.0 (API level 21) minimum pour de meilleures performances
-        targetSdk = 35 // Android 15 (API level 35) pour les dernières fonctionnalités
+        targetSdk = 36 // Android 16 (API level 36) pour compatibilité image_cropper
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         

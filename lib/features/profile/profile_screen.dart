@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -310,20 +311,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickImage() async {
     try {
+      // Étape 1 : Sélection de l'image avec qualité maximale pour le crop
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 80,
-        maxWidth: 800,
-        maxHeight: 800,
+        imageQuality: 100,  // Qualité max pour préserver la qualité avant crop
       );
       
       if (image != null) {
-        setState(() {
-          _selectedImage = image;
-        });
+        // Étape 2 : Rognage de l'image
+        final CroppedFile? croppedFile = await _cropImage(image.path);
+        
+        if (croppedFile != null) {
+          setState(() {
+            _selectedImage = XFile(croppedFile.path);
+          });
+        }
       }
     } catch (e) {
       _showErrorSnackBar("Erreur lors de la sélection de l'image");
+    }
+  }
+
+  Future<CroppedFile?> _cropImage(String imagePath) async {
+    try {
+      return await ImageCropper().cropImage(
+        sourcePath: imagePath,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1), // Carré pour avatar
+        maxWidth: 800,
+        maxHeight: 800,
+        compressQuality: 70, // 30% de perte comme demandé
+        compressFormat: ImageCompressFormat.jpg,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Ajuster votre photo de profil',
+            toolbarColor: const Color(0xFF3678FF), // Bleu ENA
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: Colors.black,
+            cropGridColor: const Color(0xFF3678FF),
+            cropFrameColor: const Color(0xFF3678FF),
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true, // Forcer le format carré
+            hideBottomControls: false,
+            showCropGrid: true,
+          ),
+          IOSUiSettings(
+            title: 'Ajuster votre photo',
+            doneButtonTitle: 'Terminé',
+            cancelButtonTitle: 'Annuler',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            rotateClockwiseButtonHidden: false,
+            hidesNavigationBar: false,
+          ),
+        ],
+      );
+    } catch (e) {
+      _showErrorSnackBar("Erreur lors du rognage de l'image");
+      return null;
     }
   }
 
