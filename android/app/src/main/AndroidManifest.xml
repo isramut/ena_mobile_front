@@ -7,10 +7,6 @@
     <!-- Permission pour accéder aux informations WiFi -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     
-    <!-- ===================== PERMISSIONS STOCKAGE ===================== -->
-    <!-- Pour Android 13+ (API 33+) - Permissions granulaires pour les médias -->
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    
     <!-- ===================== PERMISSIONS CAMÉRA ET MULTIMÉDIA ===================== -->
     <!-- Permission pour utiliser la caméra (photos de profil) -->
     <uses-permission android:name="android.permission.CAMERA" />
