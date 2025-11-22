@@ -22,6 +22,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'common/splash_screen.dart';
+import 'services/push_notification_service.dart';
 
 // Configuration spécifique Android/iOS pour ENA Mobile
 
@@ -39,6 +40,9 @@ void main() async {
 
   // Tracker l'ouverture de l'application
   await FirebaseAnalyticsService.trackAppOpened();
+
+  // Initialiser les notifications push Firebase Cloud Messaging
+  await PushNotificationService.initialize();
 
   runApp(
     ChangeNotifierProvider(
@@ -108,6 +112,28 @@ class _MainRouterState extends State<MainRouter> {
   void initState() {
     super.initState();
     _checkLoginStatus();
+    
+    // Configurer callback pour navigation depuis notifications
+    PushNotificationService.onNotificationTap = _handleNotificationTap;
+  }
+  
+  /// Gérer la navigation depuis une notification push
+  void _handleNotificationTap(String? link) {
+    if (link == null || !mounted) return;
+    
+    // Navigation selon le lien fourni dans la notification
+    if (link.contains('candidature') || link.contains('apply')) {
+      setState(() => selectedIndex = 2); // Onglet Inscription
+    } else if (link.contains('quiz') || link.contains('prepa')) {
+      setState(() => selectedIndex = 3); // Onglet Prépa
+    } else if (link.contains('actualites') || link.contains('news')) {
+      setState(() => selectedIndex = 1); // Onglet Actualités
+    } else if (link.contains('contact')) {
+      setState(() => selectedIndex = 4); // Onglet Contact
+    } else if (link.contains('profile')) {
+      setState(() => selectedIndex = 5); // Onglet Profil
+    }
+    // Vous pouvez ajouter d'autres cas selon vos besoins
   }
 
   void _checkLoginStatus() async {
@@ -162,6 +188,11 @@ class _MainRouterState extends State<MainRouter> {
 
   @override
   Widget build(BuildContext context) {
+    // Set context global pour les dialogs de notification
+    if (isLoggedIn) {
+      PushNotificationService.setContext(context);
+    }
+    
     if (!isLoggedIn) {
       return LoginScreen(onLoginSuccess: handleLoginSuccess);
     } else {

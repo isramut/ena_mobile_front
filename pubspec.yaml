@@ -39,11 +39,8 @@ dependencies:
   flutter_dotenv: ^5.2.1
   firebase_core: ^3.8.0
   firebase_analytics: ^11.3.4
-
-#carousel_slider:
-#  git:
-#    url: https://github.com/sergiandreplace/carousel_slider.git
-#    ref: master
+  firebase_messaging: ^15.1.6
+  flutter_local_notifications: ^18.0.1
 
 dev_dependencies:
   flutter_test:

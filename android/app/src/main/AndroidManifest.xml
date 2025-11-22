@@ -28,6 +28,12 @@
     <!-- Permission pour les vibrations (feedback utilisateur) -->
     <uses-permission android:name="android.permission.VIBRATE" />
     
+    <!-- ===================== PERMISSIONS NOTIFICATIONS PUSH ===================== -->
+    <!-- Permission pour notifications Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Permission pour recevoir notifications au boot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    
     <!-- ===================== DÉCLARATIONS DE FONCTIONNALITÉS ===================== -->
     <!-- Déclarer que l'app utilise la caméra mais qu'elle n'est pas obligatoire -->
     <uses-feature
@@ -85,6 +91,26 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+            
+        <!-- ===================== FIREBASE CLOUD MESSAGING ===================== -->
+        <!-- Service pour recevoir les notifications push -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Canal de notification par défaut pour Android 8+ -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="ena_notifications" />
+            
+        <!-- Icône de notification (utilise l'icône launcher existante) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/launcher_icon" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
