@@ -91,11 +91,18 @@ Cliquer sur **"Additional options"** :
 - `urgent` → Icône ⚠️ rouge
 
 **Links disponibles :**
+
+*Routes internes (navigation dans l'app) :*
 - `/candidature` ou `/apply` → Onglet Inscription
 - `/quiz` ou `/prepa` → Onglet Prépa
 - `/actualites` ou `/news` → Onglet Actualités
 - `/contact` → Onglet Contact
 - `/profile` → Onglet Profil
+
+*URLs externes (ouverture dans le navigateur) :*
+- `https://example.com` → Ouvre dans le navigateur
+- `https://myena.cd/documents` → Ouvre dans le navigateur
+- Toute URL commençant par `http://` ou `https://`
 
 ### Étape 4 : Test avant envoi
 

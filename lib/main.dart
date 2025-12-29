@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'common/splash_screen.dart';
 import 'services/push_notification_service.dart';
 
@@ -118,10 +119,27 @@ class _MainRouterState extends State<MainRouter> {
   }
   
   /// Gérer la navigation depuis une notification push
-  void _handleNotificationTap(String? link) {
+  /// Supporte les URLs complètes (https://...) et les routes internes (/candidature, etc.)
+  void _handleNotificationTap(String? link) async {
     if (link == null || !mounted) return;
     
-    // Navigation selon le lien fourni dans la notification
+    // Vérifier si c'est une URL externe (http:// ou https://)
+    if (link.startsWith('http://') || link.startsWith('https://')) {
+      // Ouvrir l'URL dans le navigateur externe
+      final Uri url = Uri.parse(link);
+      try {
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        } else {
+          debugPrint('❌ Impossible d\'ouvrir l\'URL: $link');
+        }
+      } catch (e) {
+        debugPrint('❌ Erreur lors de l\'ouverture de l\'URL: $e');
+      }
+      return;
+    }
+    
+    // Navigation interne selon le lien fourni dans la notification
     if (link.contains('candidature') || link.contains('apply')) {
       setState(() => selectedIndex = 2); // Onglet Inscription
     } else if (link.contains('quiz') || link.contains('prepa')) {
